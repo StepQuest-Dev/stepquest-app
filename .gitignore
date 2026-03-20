@@ -137,3 +137,65 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ---------------------------------------------------------------------------
+# REACT NATIVE & JAVASCRIPT
+# ---------------------------------------------------------------------------
+node_modules/
+.eslintcache
+.stylelintcache
+.npm
+.yarn-integrity
+*.log
+package-lock.json
+yarn.lock
+
+# ---------------------------------------------------------------------------
+# ANDROID SPECIFIC
+# ---------------------------------------------------------------------------
+android/app/build/
+android/.gradle/
+android/app/src/main/assets/
+android/app/src/main/res/raw/
+*.keystore
+!android/app/debug.keystore
+android/bundle/
+android/captures/
+.cxx/
+local.properties
+
+# ---------------------------------------------------------------------------
+# IOS SPECIFIC (Apple HealthKit & CocoaPods)
+# ---------------------------------------------------------------------------
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/.xccheckout
+ios/*.moved-aside
+ios/*.xcuserstate
+ios/*.xcscmblueprint
+ios/Podfile.lock
+
+# ---------------------------------------------------------------------------
+# SECRETS & ENV (NAJWAŻNIEJSZE DLA ANTY-CHEATA)
+# ---------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ---------------------------------------------------------------------------
+# IDE & SYSTEM
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
