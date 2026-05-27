@@ -22,7 +22,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -30,7 +33,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Zezwól aplikacji na dostęp do czujników ruchu, aby zliczać Twoje kroki."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
