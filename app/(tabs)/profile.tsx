@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image, FlatList, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Image, FlatList, SafeAreaView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { FontAwesome5 } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api';
 
-// Definiujemy interfejsy (kształt danych), żeby TypeScript nam podpowiadał
 interface Character {
   id: string;
   name: string;
@@ -19,23 +21,21 @@ interface UserProfile {
 }
 
 export default function PlayerProfile() {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        // Pobieramy dane zalogowanego gracza
         const response = await api.get('/auth/me');
         const userData = response.data;
 
-        // Składamy profil. Jeśli backend nie ma jeszcze tych pól, używamy danych zastępczych:
         setProfile({
           username: userData.username || 'Nieznany Wojownik',
           email: userData.email || 'brak@email.com',
-          level: userData.level || 1, // Domyślny poziom to 1
+          level: userData.level || 1,
           avatarUrl: userData.avatarUrl || 'https://ui-avatars.com/api/?name=' + (userData.username || 'User') + '&background=2980b9&color=fff&size=200',
-          // Tymczasowa lista postaci, jeśli backend zwraca pustą tablicę lub undefined
           characters: userData.characters?.length > 0 ? userData.characters : [
             { id: '1', name: 'Zwinny Łotrzyk', class: 'Zabójca', level: 5 },
             { id: '2', name: 'Potężny Mag', class: 'Czarodziej', level: 12 }
@@ -51,6 +51,44 @@ export default function PlayerProfile() {
 
     fetchProfileData();
   }, []);
+
+  // Funkcja obsługująca wylogowanie
+  const handleLogout = async () => {
+    try {
+      // 1. Czyszczenie tokenu w zależności od platformy
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('userToken');
+        }
+      } else {
+        await SecureStore.deleteItemAsync('userToken');
+      }
+
+      // 2. Przekierowanie do ekranu logowania (wewnątrz grupy auth)
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('❌ Błąd podczas wylogowywania:', error);
+      Alert.alert('Błąd', 'Nie udało się pomyślnie wylogować.');
+    }
+  };
+
+  // Potwierdzenie chęci wylogowania (Alert dla Mobile, confirm dla Web)
+  const confirmLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Czy na pewno chcesz się wylogować?')) {
+        handleLogout();
+      }
+    } else {
+      Alert.alert(
+        'Wylogowanie',
+        'Czy na pewno chcesz opuścić grę?',
+        [
+          { text: 'Anuluj', style: 'cancel' },
+          { text: 'Wyloguj', style: 'destructive', onPress: handleLogout }
+        ]
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -69,7 +107,6 @@ export default function PlayerProfile() {
     );
   }
 
-  // Komponent pojedynczej karty postaci do FlatListy
   const renderCharacter = ({ item }: { item: Character }) => (
     <View style={styles.characterCard}>
       <View style={styles.characterInfo}>
@@ -86,15 +123,22 @@ export default function PlayerProfile() {
     <SafeAreaView style={styles.container}>
       {/* Sekcja główna profilu (Góra) */}
       <View style={styles.headerCard}>
-        <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-        <View style={styles.headerInfo}>
-          <Text style={styles.username}>{profile.username}</Text>
-          <Text style={styles.email}>{profile.email}</Text>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelText}>POZIOM {profile.level}</Text>
-          </View>
-        </View>
-      </View>
+  <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
+  
+  <View style={styles.headerInfo}>
+    <Text style={styles.username}>{profile.username}</Text>
+    <Text style={styles.email}>{profile.email}</Text>
+    <View style={styles.levelBadge}>
+      <Text style={styles.levelText}>POZIOM {profile.level}</Text>
+    </View>
+  </View>
+
+  {/* Teraz przycisk jest wewnątrz Flexboxa, a nie "pływa" nad nim */}
+  <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout}>
+    <FontAwesome5 name="sign-out-alt" size={14} color="#e74c3c" />
+    <Text style={styles.logoutText}>Wyloguj</Text>
+  </TouchableOpacity>
+</View>
 
       {/* Sekcja postaci (Dół) */}
       <View style={styles.listContainer}>
@@ -129,16 +173,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f6f8',
   },
   headerCard: {
-    flexDirection: 'row',
+    flexDirection: 'row', // Ikona będzie obok avatara i info
     backgroundColor: '#fff',
     margin: 20,
     padding: 20,
     borderRadius: 15,
-    alignItems: 'center',
+    alignItems: 'center', // To wyśrodkuje wszystko w pionie
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff0f0',
+    borderRadius: 8,
+    marginLeft: 'auto', // Klucz: wypycha przycisk na samą prawą stronę, ale wewnątrz Flexa
+  },
+  logoutText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 6,
   },
   avatar: {
     width: 80,
@@ -230,5 +290,7 @@ const styles = StyleSheet.create({
     color: '#95a5a6',
     marginTop: 20,
     fontStyle: 'italic',
-  }
+  },
+
+
 });
