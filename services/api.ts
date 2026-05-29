@@ -4,7 +4,8 @@ import { Platform } from 'react-native';
 
 // Pamiętaj: localhost dla Web/Emulacji, Twoje IP jeśli testujesz na fizycznym telefonie
 //const API_URL = 'http://localhost:3000/api/v1';
-//Zalecenia mistrza fronenda aby dzialalo
+
+//Zalecenia mistrza fronenda aby dzialalo na LTE i inni mogli sie łączyć!!!!!
 // 1. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
 // 2. kopiujesz kurwa ten urla z cloudflare'a
 // 3. nowa konsola komenda ta -> npx expo start -c --tunnel
