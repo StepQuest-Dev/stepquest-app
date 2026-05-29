@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api';
+import StyledTextInput from '../../components/StyledTextInput';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -59,7 +60,6 @@ export default function LoginScreen() {
       <View style={styles.logoContainer}>
         <Image 
           source={require('@/assets/images/logo.png')} 
-          
           style={styles.logo}
           resizeMode="contain"
         />
@@ -67,19 +67,19 @@ export default function LoginScreen() {
 
       <Text style={styles.header}>STEPQUEST</Text>
       
-      <TextInput
+      {/* Pola tekstowe korzystające z inteligentnego dobierania kolorów placeholderów */}
+      <StyledTextInput
         style={styles.input}
         placeholder="E-mail"
-        placeholderTextColor="#8a94a6"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
+      
+      <StyledTextInput
         style={styles.input}
         placeholder="Hasło"
-        placeholderTextColor="#8a94a6"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
