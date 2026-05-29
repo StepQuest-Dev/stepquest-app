@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api';
@@ -20,12 +20,9 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // Wysłanie danych do serwera
       const response = await api.post('/auth/login', { email, password });
-      
       const { access_token } = response.data;
 
-      // Zapisujemy token w zależności od platformy (Web vs Mobile)
       if (access_token) {
         if (Platform.OS === 'web') {
           if (typeof window !== 'undefined') {
@@ -36,14 +33,12 @@ export default function LoginScreen() {
         }
       }
 
-      // Komunikat o sukcesie (bezpieczny dla obu platform)
       if (typeof window !== 'undefined') {
         alert('Sukces! Zalogowano pomyślnie.');
       } else {
         Alert.alert('Sukces', 'Zalogowano pomyślnie!');
       }
 
-      // Przejście do Dashboardu
       router.replace('/(tabs)/dashboard');
 
     } catch (error: any) {
@@ -61,11 +56,21 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>StepQuest</Text>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('@/assets/images/logo.png')} 
+          
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <Text style={styles.header}>STEPQUEST</Text>
       
       <TextInput
         style={styles.input}
         placeholder="E-mail"
+        placeholderTextColor="#8a94a6"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -74,6 +79,7 @@ export default function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="Hasło"
+        placeholderTextColor="#8a94a6"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -85,7 +91,7 @@ export default function LoginScreen() {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color="#ebd59b" />
         ) : (
           <Text style={styles.buttonText}>ZALOGUJ SIĘ</Text>
         )}
@@ -99,11 +105,70 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f4f6f8' },
-  header: { fontSize: 32, fontWeight: 'bold', textAlign: 'center', marginBottom: 40, color: '#2c3e50' },
-  input: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
-  button: { backgroundColor: '#27ae60', padding: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { backgroundColor: '#95a5a6' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  linkText: { textAlign: 'center', color: '#2980b9', fontWeight: 'bold' }
+  container: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    padding: 20, 
+    backgroundColor: '#12181f'
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  logo: {
+    width: 160,  
+    height: 160, 
+  },
+  header: { 
+    fontSize: 34, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 35, 
+    color: '#ebd59b', 
+    letterSpacing: 2,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 1
+  },
+  input: { 
+    backgroundColor: '#212933', 
+    padding: 15, 
+    borderRadius: 4, 
+    marginBottom: 15, 
+    borderWidth: 2, 
+    borderColor: '#a38450', 
+    color: '#ebd59b', 
+    fontSize: 16
+  },
+  button: { 
+    backgroundColor: '#2a3642', 
+    padding: 15, 
+    borderRadius: 4, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#d8b26e', 
+    marginTop: 10
+  },
+  buttonDisabled: { 
+    backgroundColor: '#1a2026',
+    borderColor: '#555' 
+  },
+  buttonText: { 
+    color: '#ebd59b', 
+    fontWeight: 'bold', 
+    fontSize: 18,
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1
+  },
+  linkText: { 
+    textAlign: 'center', 
+    color: '#a38450', 
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginTop: 10,
+    textDecorationLine: 'underline'
+  }
 });
