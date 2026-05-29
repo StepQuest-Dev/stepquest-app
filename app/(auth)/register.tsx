@@ -122,8 +122,9 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
     marginBottom: 15, 
     borderWidth: 1, 
-    borderColor: '#ddd' 
-  },
+    borderColor: '#ddd',
+    color:"#888"
+      },
   button: { 
     backgroundColor: '#2980b9', 
     padding: 15, 
@@ -144,4 +145,5 @@ const styles = StyleSheet.create({
     color: '#27ae60', 
     fontWeight: 'bold' 
   }
+  
 });

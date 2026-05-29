@@ -1,59 +1,52 @@
-import { useEffect, useState } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { Platform, View, ActivityIndicator } from 'react-native';
+import { Tabs } from 'expo-router';
+import { FontAwesome5 } from '@expo/vector-icons'; // Zestaw darmowych, popularnych ikon
 
-export default function RootLayout() {
-  const segments = useSegments(); // Pozwala sprawdzić, na jakim ekranie obecnie jesteśmy
-  const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-
-  useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        // 1. Szukamy tokenu tak jak wcześniej (Web vs Mobile)
-        let token = null;
-        if (Platform.OS === 'web') {
-          if (typeof window !== 'undefined') token = localStorage.getItem('userToken');
-        } else {
-          token = await SecureStore.getItemAsync('userToken');
-        }
-
-        // 2. Sprawdzamy, czy nazwa obecnego pliku to 'login' lub 'register'
-        // W Expo Router segments[0] zwraca nazwę bieżącego folderu/pliku
-        const isAuthScreen = segments[0] === 'login' || segments[0] === 'register';
-
-        // 3. Logika blokowania
-        if (!token && !isAuthScreen) {
-          // Ktoś nie ma tokenu i chce wejść w głąb apki -> Wyrzucamy na logowanie
-          router.replace('/login');
-        } else if (token && isAuthScreen) {
-          // Ktoś JEST zalogowany, a wszedł na ekran logowania -> Wpuszczamy na dashboard
-          router.replace('/dashboard'); // Zmień na '/(tabs)' lub '/(tabs)/dashboard' jeśli masz taką strukturę
-        }
-      } catch (error) {
-        console.error('Błąd sprawdzania tokenu:', error);
-      } finally {
-        // Niezależnie od wyniku, wyłączamy ekran ładowania
-        setIsChecking(false);
-      }
-    };
-
-    // Uruchamiamy sprawdzanie za każdym razem, gdy użytkownik zmienia ekran
-    verifyAuth();
-  }, [segments]);
-
-  // Ekran ładowania podczas sprawdzania tokenu (żeby nie mignął Dashboard niezalogowanym)
-  if (isChecking) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f6f8' }}>
-        <ActivityIndicator size="large" color="#2980b9" />
-      </View>
-    );
-  }
-
-  // Jeśli wszystko jest OK, ładujemy standardowy stos ekranów bez górnych nagłówków
+export default function TabsLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <Tabs
+      screenOptions={{
+        // Ukrywamy domyślny górny pasek z nazwą pliku (mamy własne, ładniejsze nagłówki na ekranach)
+        headerShown: false,
+        // Kolor aktywnej ikonki (nasz motyw przewodni - niebieski)
+        tabBarActiveTintColor: '#2980b9',
+        // Kolor nieaktywnej ikonki
+        tabBarInactiveTintColor: '#95a5a6',
+        // Stylowanie samego paska na dole
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 1,
+          borderTopColor: '#ecf0f1',
+          height: 60,
+          paddingBottom: 10,
+          paddingTop: 5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: 'bold',
+        }
+      }}
+    >
+      {/* 1. Przycisk: Dashboard */}
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Pulpit',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome5 name="home" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* 2. Przycisk: Profil Gracza */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome5 name="user-alt" size={24} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
