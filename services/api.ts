@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 // 1. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
 // 2. kopiujesz kurwa ten urla z cloudflare'a
 // 3. nowa konsola komenda ta -> npx expo start -c --tunnel
-const API_URL = 'https://ins-bags-anywhere-famous.trycloudflare.com/api/v1';
+const API_URL = 'https://welcome-red-horn-super.trycloudflare.com/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,
