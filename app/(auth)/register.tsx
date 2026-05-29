@@ -95,7 +95,7 @@ export default function RegisterScreen() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+      <TouchableOpacity onPress={() => router.replace('/login')} style={{ marginTop: 20 }}>
         <Text style={styles.linkText}>Masz już konto? Zaloguj się</Text>
       </TouchableOpacity>
     </View>
