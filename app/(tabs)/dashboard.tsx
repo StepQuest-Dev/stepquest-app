@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform }
 import { useRouter, useNavigation } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
-import { Pedometer } from 'expo-sensors'; // 1. Importujemy krokomierz
+import { Pedometer } from 'expo-sensors';
 import api from '../../services/api';
 
 let MapView: any = null;
@@ -34,8 +34,7 @@ export default function DashboardScreen() {
   // FUNKCJA SYNCHRONIZACJI KROKÓW Z SERWEREM NestJS
   const syncStepsWithServer = async (currentSteps: number) => {
     try {
-      // Wysyłamy aktualną liczbę kroków do bazy
-      await api.post('/steps', { count: currentSteps }); // Dopasuj nazwę pola (steps lub count) pod NestJS
+      await api.post('/steps', { count: currentSteps });
     } catch (err) {
       console.error('Błąd synchronizacji kroków z serwerem:', err);
     }
@@ -69,27 +68,21 @@ export default function DashboardScreen() {
             const startOfDay = new Date(now);
             startOfDay.setHours(0, 0, 0, 0);
 
-            // Pobieramy kroki z telefonu od początku dzisiejszego dnia
             const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
             if (isMounted) {
               setSteps(stepCountResult.steps);
-              // Od razu wysyłamy zapisany stan do bazy po wejściu na dashboard
               syncStepsWithServer(stepCountResult.steps); 
             }
 
-            // Słuchamy zmian czujnika na żywo (gdy użytkownik idzie z włączoną aplikacją)
             subscription = Pedometer.watchStepCount((result) => {
               if (isMounted) {
-                // Jeśli urządzenie zwróci nowe kroki, aktualizujemy stan na ekranie
                 const newSteps = result.steps ?? stepCountResult.steps;
                 setSteps(newSteps);
-                // Synchronizujemy zmianę z NestJS w tle
                 syncStepsWithServer(newSteps);
               }
             });
           }
         } else {
-          // Jeśli to przeglądarka Web - pobieramy po prostu ostatni wynik z bazy danych
           const stepsResponse = await api.get('/steps/latest');
           if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
         }
@@ -127,7 +120,6 @@ export default function DashboardScreen() {
     );
   }
 
-  // Funkcja renderująca środek ekranu w zależności od platformy
   const renderMapArea = () => {
     if (Platform.OS === 'web') {
       return (
@@ -149,7 +141,6 @@ export default function DashboardScreen() {
       );
     }
 
-    // Wersja dla telefonu (iOS/Android)
     if (location && MapView && Marker) {
       return (
         <MapView
@@ -193,9 +184,14 @@ export default function DashboardScreen() {
       
       {/* GÓRNY PANEL PROFILU */}
       <View style={styles.profileHeader}>
-        <View style={styles.avatarPlaceholder}>
+        {/* Avatar jako przycisk prowadzący do profilu */}
+        <TouchableOpacity 
+          style={styles.avatarPlaceholder} 
+          onPress={() => router.push('/(tabs)/profile')}
+          activeOpacity={0.7}
+        >
           <Text style={styles.avatarText}>🤠</Text>
-        </View>
+        </TouchableOpacity>
         
         <View style={styles.profileInfo}>
           <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
@@ -243,13 +239,6 @@ export default function DashboardScreen() {
           <Text style={styles.navIcon}>🏡</Text>
           <Text style={styles.navText}>OSADA</Text>
         </TouchableOpacity>
-
-        <View style={styles.navDivider} />
-
-        <TouchableOpacity style={styles.navTab} onPress={() => router.push('/(tabs)/profile')}>
-          <Text style={styles.navIcon}>👤</Text>
-          <Text style={styles.navText}>PROFIL</Text>
-        </TouchableOpacity>
       </View>
 
     </View>
@@ -268,7 +257,7 @@ const retroDarkMapStyle = [
 ];
 
 const styles = StyleSheet.create({
-  container: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -384,8 +373,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#171f2a',
   },
-  
-  // Widok Web-Fallback (Stylowany na menu gry)
   webFallbackContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -425,8 +412,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-
-  // Style dla mapy na urządzeniach mobilnych
   map: {
     width: '100%',
     height: '100%',
