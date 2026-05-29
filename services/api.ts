@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 // Jesli chcesz na localhoscie
 //const API_URL = 'http://localhost:3000/api/v1';
+
 //Zalecenia mistrza fronenda aby dzialalo
 // 1. instalujesz ngroka npx install ngrok
 // 2. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
