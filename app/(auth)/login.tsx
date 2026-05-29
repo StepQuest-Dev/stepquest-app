@@ -44,7 +44,7 @@ export default function LoginScreen() {
       }
 
       // Przejście do Dashboardu
-      router.replace('../dashboard');
+      router.replace('/(tabs)/dashboard');
 
     } catch (error: any) {
       console.error('❌ Błąd logowania:', error);
@@ -91,7 +91,7 @@ export default function LoginScreen() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('../register')} style={{ marginTop: 20 }}>
+      <TouchableOpacity onPress={() => router.push('/register')} style={{ marginTop: 20 }}>
         <Text style={styles.linkText}>Nie masz konta? Zarejestruj się</Text>
       </TouchableOpacity>
     </View>
