@@ -3,12 +3,18 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Pamiętaj: localhost dla Web/Emulacji, Twoje IP jeśli testujesz na fizycznym telefonie
-const API_URL = 'http://localhost:3000/api/v1';
+//const API_URL = 'http://localhost:3000/api/v1';
+//Zalecenia mistrza fronenda aby dzialalo
+// 1. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
+// 2. kopiujesz kurwa ten urla z cloudflare'a
+// 3. nowa konsola komenda ta -> npx expo start -c --tunnel
+const API_URL = 'https://ins-bags-anywhere-famous.trycloudflare.com/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 
