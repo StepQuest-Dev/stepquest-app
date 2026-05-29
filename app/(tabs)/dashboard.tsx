@@ -20,6 +20,7 @@ export default function DashboardScreen() {
   const [username, setUsername] = useState('');
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false); // Status wysyłania mocków
   
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -38,6 +39,20 @@ export default function DashboardScreen() {
     } catch (err) {
       console.error('Błąd synchronizacji kroków z serwerem:', err);
     }
+  };
+
+  // MOCK: Funkcja deweloperska do ręcznego nabijania kroków i wysyłki
+  const handleAddMockSteps = async (amount: number) => {
+    setSyncing(true);
+    const updatedSteps = steps + amount;
+    
+    // 1. Aktualizujemy lokalny stan na ekranie natychmiast
+    setSteps(updatedSteps);
+    
+    // 2. Strzelamy do backendu nową wartością
+    console.log(`🚀 [DEV MOCK] Wysyłam ${updatedSteps} kroków do backendu...`);
+    await syncStepsWithServer(updatedSteps);
+    setSyncing(false);
   };
 
   useEffect(() => {
@@ -184,7 +199,6 @@ export default function DashboardScreen() {
       
       {/* GÓRNY PANEL PROFILU */}
       <View style={styles.profileHeader}>
-        {/* Avatar jako przycisk prowadzący do profilu */}
         <TouchableOpacity 
           style={styles.avatarPlaceholder} 
           onPress={() => router.push('/(tabs)/profile')}
@@ -210,6 +224,31 @@ export default function DashboardScreen() {
             <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
           </View>
           <Text style={styles.coinsLabel}>STEP COINS</Text>
+        </View>
+      </View>
+
+      {/* NOWY PANEL MOCK: PANEL DEWELOPERSKI DO PRZESYŁANIA KROKÓW */}
+      <View style={styles.mockPanelContainer}>
+        <View style={styles.mockHeaderRow}>
+          <Text style={styles.mockPanelTitle}>🛠️ PANEL DEWELOPERSKI (MOCK STEPS)</Text>
+          {syncing && <ActivityIndicator size="small" color="#ebd59b" />}
+        </View>
+        <View style={styles.mockButtonsRow}>
+          <TouchableOpacity 
+            style={styles.mockButton} 
+            onPress={() => handleAddMockSteps(1000)}
+            disabled={syncing}
+          >
+            <Text style={styles.mockButtonText}>+1 000 KROKÓW</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.mockButton, styles.mockButtonEpic]} 
+            onPress={() => handleAddMockSteps(5000)}
+            disabled={syncing}
+          >
+            <Text style={styles.mockButtonText}>+5 000 KROKÓW</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -364,6 +403,52 @@ const styles = StyleSheet.create({
     marginTop: -2,
     opacity: 0.9,
   },
+  /* STYLE DLA NOWEGO PANELU DEWELOPERSKIEGO */
+  mockPanelContainer: {
+    backgroundColor: '#1a222b',
+    borderWidth: 2,
+    borderColor: '#d8b26e',
+    borderRadius: 4,
+    padding: 10,
+    marginTop: 10,
+  },
+  mockHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mockPanelTitle: {
+    color: '#ebd59b',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  mockButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  mockButton: {
+    flex: 1,
+    backgroundColor: '#2a3642',
+    borderWidth: 1,
+    borderColor: '#a38450',
+    paddingVertical: 8,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  mockButtonEpic: {
+    borderColor: '#ebd59b',
+    backgroundColor: '#352e25', // Lekko pomarańczowo-złoty akcent dla większych kroków
+  },
+  mockButtonText: {
+    color: '#ebd59b',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  /* KONIEC STYLÓW PANELU DEWELOPERSKIEGO */
   mainContent: {
     flex: 1,
     marginVertical: 12,
