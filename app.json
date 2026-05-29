@@ -24,8 +24,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
         "android.permission.ACTIVITY_RECOGNITION"
-      ]
+      ],
+      "package": "com.miczel.stepquestapp"
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +41,8 @@
         {
           "motionPermission": "Zezwól aplikacji na dostęp do czujników ruchu, aby zliczać Twoje kroki."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
