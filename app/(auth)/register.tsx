@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../services/api';
+import StyledTextInput from '../../components/StyledTextInput';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -68,27 +69,27 @@ export default function RegisterScreen() {
 
       <Text style={styles.header}>DOŁĄCZ DO STEPQUEST</Text>
 
-      <TextInput
+      {/* Dynamiczne pola tekstowe ze zintegrowanym placeholderem dostosowanym do systemu */}
+      <StyledTextInput
         style={styles.input}
         placeholder="E-mail"
-        placeholderTextColor="#8a94a6"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
+      
+      <StyledTextInput
         style={styles.input}
         placeholder="Nazwa użytkownika"
-        placeholderTextColor="#8a94a6"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
       />
-      <TextInput
+      
+      <StyledTextInput
         style={styles.input}
         placeholder="Hasło"
-        placeholderTextColor="#8a94a6"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
