@@ -1,157 +1,192 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { Pedometer } from 'expo-sensors';
 import api from '../../services/api';
 
+// 1. Definiujemy DTO (Data Transfer Object)
+// Struktura danych, która będzie wysyłana na backend
+interface SyncStepsDto {
+  steps: number;
+  date: string; // np. "2026-05-29"
+}
+
 export default function DashboardScreen() {
-  const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [steps, setSteps] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [isPedometerAvailable, setIsPedometerAvailable] = useState<boolean>(false);
+  const [pastStepCount, setPastStepCount] = useState(0);
+  const [currentStepCount, setCurrentStepCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // 1. Pobieramy dane użytkownika (token wysyła się sam!)
-        const userResponse = await api.get('/auth/me');
-        setUsername(userResponse.data.username || userResponse.data.email);
+    let subscription: Pedometer.Subscription | null = null;
 
-        // 2. Pobieramy najnowsze kroki użytkownika
+    const subscribeToPedometer = async () => {
+      // Pytamy o uprawnienia (wymagane na Androidzie i iOS)
+      const { status } = await Pedometer.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Brak uprawnień', 'Aplikacja potrzebuje dostępu do aktywności fizycznej, aby liczyć kroki.');
+        return;
+      }
+
+      // Sprawdzamy, czy telefon posiada fizyczny krokomierz
+      const isAvailable = await Pedometer.isAvailableAsync();
+      setIsPedometerAvailable(isAvailable);
+
+      if (isAvailable) {
+        // Obliczamy ramy czasowe: od dzisiejszej północy do teraz
+        const end = new Date();
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
         try {
-          const stepsResponse = await api.get('/steps/latest');
-          // Dopasuj '.count' lub '.steps' w zależności od tego, jak nazwałeś pole w NestJS
-          setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0); 
-        } catch (stepError) {
-          console.warn('Użytkownik nie ma jeszcze zapisanych kroków w bazie.');
+          // Pobieramy historię kroków z dzisiejszego dnia
+          const pastStepCountResult = await Pedometer.getStepCountAsync(start, end);
+          if (pastStepCountResult) {
+            setPastStepCount(pastStepCountResult.steps);
+          }
+        } catch (error) {
+          console.error("Nie można pobrać historii kroków:", error);
         }
 
-      } catch (error: any) {
-        console.error('❌ Błąd pobierania danych z serwera:', error);
-        // Jeśli serwer odrzuci token (np. wygasł), wylogowujemy gracza
-        if (error.response?.status === 401) {
-          alert('Sesja wygasła. Zaloguj się ponownie.');
-          handleLogout();
-        }
-      } finally {
-        setLoading(false);
+        // Nasłuchujemy kroków w czasie rzeczywistym (kiedy apka jest otwarta)
+        subscription = Pedometer.watchStepCount(result => {
+          setCurrentStepCount(result.steps);
+        });
       }
     };
 
-    fetchDashboardData();
+    subscribeToPedometer();
+
+    // Czyszczenie subskrypcji po wyjściu z ekranu
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
   }, []);
 
-  const handleLogout = async () => {
-    // Uniwersalne czyszczenie tokenu (Web i Telefon)
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') localStorage.removeItem('userToken');
-    } else {
-      await SecureStore.deleteItemAsync('userToken');
+  // Łączna liczba kroków (dzisiejsza historia + to, co zrobiliśmy z włączoną apką)
+  const totalSteps = pastStepCount + currentStepCount;
+
+  // 2. Funkcja wysyłająca dane na backend
+  const syncStepsWithBackend = async () => {
+    setIsSyncing(true);
+
+    // Tworzymy paczkę danych zgodnie z naszym DTO
+    const payload: SyncStepsDto = {
+      steps: totalSteps,
+      date: new Date().toISOString().split('T')[0], // Format ISO (wycina tylko YYYY-MM-DD)
+    };
+
+    console.log('🚀 Wysyłam DTO na serwer:', payload);
+
+    try {
+      // Wysyłamy POST na Twój endpoint w NestJS (zmień ścieżkę, jeśli w NestJS nazywa się inaczej)
+      const response = await api.post('/steps/sync', payload);
+      
+      console.log('✅ Odpowiedź serwera:', response.data);
+      Alert.alert('Sukces!', `Zsynchronizowano ${totalSteps} kroków z serwerem!`);
+      
+    } catch (error: any) {
+      console.error('❌ Błąd synchronizacji:', error);
+      Alert.alert('Błąd', 'Nie udało się wysłać kroków na serwer.');
+    } finally {
+      setIsSyncing(false);
     }
-    
-    // Zmień ścieżkę jeśli Twój login.tsx jest w innej lokalizacji
-    router.replace('../login'); 
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2980b9" />
-        <Text style={{ marginTop: 10 }}>Ładowanie profilu...</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.headerCard}>
-        <Text style={styles.greeting}>Witaj, {username}! 👋</Text>
-        <Text style={styles.subtitle}>Gotowy na kolejne wyzwania?</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.card}>
+        <Text style={styles.headerTitle}>Twój postęp</Text>
+        
+        {!isPedometerAvailable ? (
+          <Text style={styles.errorText}>Krokomierz nie jest dostępny na tym urządzeniu.</Text>
+        ) : (
+          <>
+            <Text style={styles.stepCountText}>{totalSteps}</Text>
+            <Text style={styles.stepLabel}>ZROBIONYCH KROKÓW DZIŚ</Text>
+          </>
+        )}
       </View>
 
-      <View style={styles.statsCard}>
-        <Text style={styles.statsLabel}>Twoje dzisiejsze kroki</Text>
-        <Text style={styles.statsValue}>{steps}</Text>
-        <Text style={styles.statsUnit}>kroków</Text>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Wyloguj się</Text>
+      <TouchableOpacity 
+        style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]} 
+        onPress={syncStepsWithBackend}
+        disabled={isSyncing || !isPedometerAvailable}
+      >
+        {isSyncing ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.syncButtonText}>SYNCHRONIZUJ Z BAZĄ</Text>
+        )}
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  centerContainer: {
+  container: {
     flex: 1,
+    backgroundColor: '#f4f6f8',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f4f6f8',
-  },
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#f4f6f8',
-    justifyContent: 'center'
-  },
-  headerCard: {
-    backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    padding: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    width: '100%',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  greeting: { 
-    fontSize: 26, 
-    fontWeight: 'bold', 
-    color: '#2c3e50' 
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginTop: 5,
-  },
-  statsCard: {
-    backgroundColor: '#2980b9',
-    padding: 30,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 40,
-    shadowColor: '#2980b9',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 15,
     elevation: 5,
+    marginBottom: 30,
   },
-  statsLabel: {
-    color: '#e0f7fa',
-    fontSize: 16,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  statsValue: {
-    color: '#fff',
-    fontSize: 54,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginVertical: 10,
+    color: '#7f8c8d',
+    marginBottom: 20,
   },
-  statsUnit: {
-    color: '#e0f7fa',
-    fontSize: 18,
+  stepCountText: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: '#2980b9',
   },
-  logoutButton: { 
-    backgroundColor: '#e74c3c', 
-    padding: 15, 
-    borderRadius: 8, 
-    alignItems: 'center' 
+  stepLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#95a5a6',
+    marginTop: 10,
+    letterSpacing: 1,
   },
-  logoutText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
+  errorText: {
+    color: '#e74c3c',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  syncButton: {
+    backgroundColor: '#27ae60',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#27ae60',
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  syncButtonDisabled: {
+    backgroundColor: '#95a5a6',
+    shadowOpacity: 0,
+  },
+  syncButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   }
 });
