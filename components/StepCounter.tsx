@@ -1,12 +1,17 @@
-import { Pedometer } from 'expo-sensors';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Platform, StyleSheet } from 'react-native';
-
+import { Pedometer } from 'expo-sensors';
 import { Text, View } from '@/components/Themed';
+
+// POPRAWKA 1: Import uprawnień dla systemu Android
+import { 
+  requestActivityPermissions, 
+  getActivityPermissionStatus 
+} from 'expo-android-pedometer';
 
 export default function StepCounter() {
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [steps, setSteps] = useState<number | null>(null);
+  const [steps, setSteps] = useState<number>(0); // Zmieniamy stan początkowy na 0
   const [error, setError] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState<boolean>(false);
 
@@ -22,6 +27,24 @@ export default function StepCounter() {
       }
 
       try {
+        // POPRAWKA 2: Prośba o uprawnienia ruchowe na Androidzie
+        if (Platform.OS === 'android') {
+          const currentStatus = await getActivityPermissionStatus();
+          
+          if (currentStatus.status !== 'granted') {
+            console.log('🤠 StepQuest: Prośba o uprawnienia Activity Recognition...');
+            const requestStatus = await requestActivityPermissions();
+            
+            if (requestStatus.status !== 'granted') {
+              if (isMounted) {
+                setAvailable(false);
+                setError('Brak uprawnień do aktywności fizycznej w systemie Android.');
+              }
+              return;
+            }
+          }
+        }
+
         const isAvailable = await Pedometer.isAvailableAsync();
         if (!isMounted) return;
 
@@ -32,18 +55,30 @@ export default function StepCounter() {
         }
 
         setError(null);
-        const now = new Date();
-        const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
 
-        const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
-        if (!isMounted) return;
-        setSteps(stepCountResult.steps);
+        // POPRAWKA 3: getStepCountAsync uruchamiamy WYLKO na iOS
+        if (Platform.OS === 'ios') {
+          const now = new Date();
+          const startOfDay = new Date(now);
+          startOfDay.setHours(0, 0, 0, 0);
+
+          const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
+          if (isMounted) {
+            setSteps(stepCountResult.steps);
+          }
+        }
+
         setIsTracking(true);
 
+        // POPRAWKA 4: Bezpieczny nasłuch kroków w czasie rzeczywistym
         subscription = Pedometer.watchStepCount((result) => {
           if (isMounted) {
-            setSteps(result.steps ?? stepCountResult.steps);
+            if (Platform.OS === 'ios') {
+              setSteps(result.steps);
+            } else {
+              // Na Androidzie result.steps zwraca kroki zrobione od momentu uruchomienia watchStepCount
+              setSteps((prevSteps) => prevSteps + (result.steps ?? 0));
+            }
           }
         });
       } catch (e) {
@@ -68,9 +103,9 @@ export default function StepCounter() {
   }, []);
 
   const handleRefresh = async () => {
-    if (Platform.OS === 'web') {
-      setError('Pedometer nie jest obsługiwany w przeglądarce.');
-      return;
+    // POPRAWKA 5: Wyłączamy historyczne odświeżanie na Androidzie, bo rzuci wyjątek
+    if (Platform.OS === 'web' || Platform.OS === 'android') {
+      return; 
     }
 
     try {
@@ -87,7 +122,11 @@ export default function StepCounter() {
     }
   };
 
-  const statusText = available === null ? 'Sprawdzanie dostępności...' : available ? 'Pedometer dostępny' : 'Pedometer niedostępny';
+  const statusText = available === null 
+    ? 'Sprawdzanie dostępności...' 
+    : available 
+      ? 'Pedometer aktywny' 
+      : 'Pedometer niedostępny';
 
   return (
     <View style={styles.container}>
@@ -95,14 +134,17 @@ export default function StepCounter() {
       <Text style={styles.value}>{statusText}</Text>
 
       <Text style={styles.label}>Kroki dzisiaj:</Text>
-      <Text style={styles.steps}>{steps !== null ? steps : '—'}</Text>
+      <Text style={styles.steps}>{steps !== null ? steps.toLocaleString() : '0'}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Button title="Odśwież kroków" onPress={handleRefresh} disabled={!available} />
+      {/* Ukrywamy przycisk odświeżania na Androidzie, bo tam kroki naliczają się wyłącznie na żywo */}
+      {Platform.OS === 'ios' && (
+        <Button title="Odśwież kroków" onPress={handleRefresh} disabled={!available} />
+      )}
 
       <Text style={styles.note}>
-        Na Androidzie i iOS komponent używa czujnika kroków z Expo Pedometer.
+        Na Androidzie kroki są zliczane automatycznie w czasie rzeczywistym od momentu uruchomienia gry.
       </Text>
     </View>
   );

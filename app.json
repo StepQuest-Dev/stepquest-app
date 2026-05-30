@@ -25,9 +25,15 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.miczel.stepquestapp"
+      "package": "com.miczel.stepquestapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "TEST_BYPASS_KEY_OSM"
+        }
+      }
     },
     "web": {
       "bundler": "metro",
