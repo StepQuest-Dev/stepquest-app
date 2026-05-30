@@ -5,14 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import { Pedometer } from 'expo-sensors';
 import api from '../../services/api';
-
-let MapView: any = null;
-let Marker: any = null;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-}
+import GameDiagnostics from '../../components/GameDiagnostics';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -25,6 +18,17 @@ export default function DashboardScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // --- STANY DLA SYSTEMU DIAGNOSTYKI ---
+  const [currentStatus, setCurrentStatus] = useState('Inicjalizacja świata gry...');
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
+
+  const addLog = (msg: string) => {
+    console.log(`[DASHBOARD] ${msg}`);
+    setDebugLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+    setCurrentStatus(msg);
+  };
+
   useEffect(() => {
     navigation.setOptions({
       tabBarStyle: { display: 'none' },
@@ -36,6 +40,7 @@ export default function DashboardScreen() {
   const syncStepsWithServer = async (currentSteps: number) => {
     try {
       await api.post('/steps', { count: currentSteps });
+      addLog(`Sync kroków udany: ${currentSteps}`);
     } catch (err) {
       console.error('Błąd synchronizacji kroków z serwerem:', err);
     }
@@ -45,11 +50,8 @@ export default function DashboardScreen() {
   const handleAddMockSteps = async (amount: number) => {
     setSyncing(true);
     const updatedSteps = steps + amount;
-    
-    // 1. Aktualizujemy lokalny stan na ekranie natychmiast
     setSteps(updatedSteps);
     
-    // 2. Strzelamy do backendu nową wartością
     console.log(`🚀 [DEV MOCK] Wysyłam ${updatedSteps} kroków do backendu...`);
     await syncStepsWithServer(updatedSteps);
     setSyncing(false);
@@ -61,21 +63,25 @@ export default function DashboardScreen() {
 
     const fetchDashboardAndStartPedometer = async () => {
       try {
-        // 1. Pobieranie danych profilu
+        addLog(`Uderzam do NestJS pod URL: ${api.defaults.baseURL}/auth/me`);
         const userResponse = await api.get('/auth/me');
+        addLog("✅ Sukces: Dane profilu odebrane z backendu.");
         if (isMounted) setUsername(userResponse.data.username || userResponse.data.email);
 
-        // 2. Pobieranie GPS
+        addLog("Żądanie uprawnień do lokalizacji satelitarnej...");
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
         if (gpsStatus === 'granted') {
+          addLog("✅ Uprawnienia GPS przyznane. Pobieram pozycję gracza...");
           let currentByGps = await Location.getCurrentPositionAsync({});
+          addLog("✅ Pozycja GPS pobrana pomyślnie.");
           if (isMounted) setLocation(currentByGps);
         } else {
+          addLog("⚠️ Odmowa uprawnień GPS.");
           setErrorMsg('Brak uprawnień do GPS.');
         }
 
-        // 3. OBSŁUGA KROKOMIERZA (PEDOMETER)
         if (Platform.OS !== 'web') {
+          addLog("Sprawdzam dostępność czujników ruchu w telefonie...");
           const isPedometerAvailable = await Pedometer.isAvailableAsync();
           
           if (isPedometerAvailable) {
@@ -83,7 +89,9 @@ export default function DashboardScreen() {
             const startOfDay = new Date(now);
             startOfDay.setHours(0, 0, 0, 0);
 
+            addLog("Pobieram zliczone dzisiaj kroki sprzętowe...");
             const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
+            addLog(`✅ Czujnik zwrócił: ${stepCountResult.steps} kroków.`);
             if (isMounted) {
               setSteps(stepCountResult.steps);
               syncStepsWithServer(stepCountResult.steps); 
@@ -96,25 +104,39 @@ export default function DashboardScreen() {
                 syncStepsWithServer(newSteps);
               }
             });
+          } else {
+            addLog("⚠️ Czujnik kroków (Pedometer) jest niedostępny.");
           }
         } else {
+          addLog("Uruchomiono na Web. Pobieram ostatnie dane kroków z bazy...");
           const stepsResponse = await api.get('/steps/latest');
           if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
         }
 
       } catch (error: any) {
+        addLog("❌ WYSTĄPIŁ BŁĄD PODCZAS ŁADOWANIA STRONY!");
         console.error('❌ Błąd aplikacji:', error);
+
+        let details = `Wiadomość: ${error.message}\n`;
+        if (error.response) {
+          details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
+        } else if (error.request) {
+          details += `Wysłano żądanie, brak jakiejkolwiek odpowiedzi sieciowej. Serwer NestJS prawdopodobnie nie działa lub zablokował go Firewall. IP komputera: ${api.defaults.baseURL}`;
+        }
+        if (isMounted) setNetworkErrorDetails(details);
+
         if (error.response?.status === 401) {
-          alert('Sesja wygasła. Zaloguj się ponownie.');
+          addLog("Sesja wygasła (401). Przekierowanie do logowania...");
           if (Platform.OS === 'web') {
             if (typeof window !== 'undefined') localStorage.removeItem('userToken');
           } else {
             await SecureStore.deleteItemAsync('userToken');
           }
-          router.replace('../login');
+          router.replace('/(auth)/login');
+          return;
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted && !networkErrorDetails) setLoading(false);
       }
     };
 
@@ -124,71 +146,96 @@ export default function DashboardScreen() {
       isMounted = false;
       if (subscription) subscription.remove();
     };
-  }, []);
+  }, [networkErrorDetails]);
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#ebd59b" />
-        <Text style={styles.loadingText}>Ładowanie świata gry...</Text>
-      </View>
+      <GameDiagnostics
+        currentStatus={currentStatus}
+        debugLogs={debugLogs}
+        networkErrorDetails={networkErrorDetails}
+      />
     );
   }
 
+  // PRZENIESIONA I ZASYNCHRONIZOWANA REPREZENTACJA MAPY Z WEBVIEW (MROCZNY LEAFLET)
   const renderMapArea = () => {
-    if (Platform.OS === 'web') {
+    if (!location) {
       return (
-        <View style={styles.webFallbackContainer}>
-          <Text style={styles.webFallbackIcon}>🧭</Text>
-          <Text style={styles.gameModeTitle}>WKRACZASZ DO ŚWIATA STEPQUEST</Text>
-          <Text style={styles.gameModeSubtitle}>
-            Interaktywna mapa GPS działa na urządzeniach mobilnych Android i iOS. 
-            Uruchom aplikację na telefonie, aby śledzić swoją pozycję na żywo!
+        <View style={styles.mapErrorContainer}>
+          <Text style={styles.mapErrorText}>
+            {errorMsg || "Szukanie sygnału GPS satelity..."}
           </Text>
-          {location && (
-            <View style={styles.coordinatesBadge}>
-              <Text style={styles.coordinatesText}>
-                Sygnał GPS zabezpieczony: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
-              </Text>
-            </View>
-          )}
         </View>
       );
     }
 
-    if (location && MapView && Marker) {
-      return (
-        <MapView
-          style={styles.map}
-          customMapStyle={retroDarkMapStyle}
-          initialRegion={{
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.009,
-            longitudeDelta: 0.009,
-          }}
-          showsUserLocation={true}
-        >
-          <Marker
-            coordinate={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            }}
-            title="Twoja Pozycja"
-            description="Tutaj zaczyna się Twoja przygoda!"
-          >
-            <View style={styles.markerContainer}>
-              <Text style={{ fontSize: 24 }}>🤠</Text>
-            </View>
-          </Marker>
-        </MapView>
-      );
+    // Kod HTML budujący silnik Leaflet. Styl CSS "invert" generuje mroczny retro-klimat.
+    const mapHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <style>
+              body { padding: 0; margin: 0; background-color: #12181f; }
+              #map { width: 100%; height: 100vh; }
+              .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
+                  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+              }
+          </style>
+      </head>
+      <body>
+          <div id="map"></div>
+          <script>
+              var map = L.map('map', { zoomControl: false }).setView([${location.coords.latitude}, ${location.coords.longitude}], 16);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  maxZoom: 19,
+                  attribution: '© OpenStreetMap'
+              }).addTo(map);
+
+              var cowboyIcon = L.divIcon({
+                  html: '<div style="font-size: 30px; text-shadow: 2px 2px 4px #000;">🤠</div>',
+                  className: 'custom-div-icon',
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 15]
+              });
+
+              L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: cowboyIcon})
+                .addTo(map)
+                .bindPopup('<b>Tutaj jesteś!</b><br>Eksploruj świat StepQuest.');
+          </script>
+      </body>
+      </html>
+    `;
+
+    if (Platform.OS !== 'web') {
+      try {
+        // Schowane dynamiczne wymaganie modułu WebView chroni przed crashami weba
+        const { WebView } = require('react-native-webview');
+        return (
+          <WebView
+            originWhitelist={['*']}
+            source={{ html: mapHtml }}
+            style={{ flex: 1, backgroundColor: '#171f2a' }}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+          />
+        );
+      } catch (e) {
+        console.warn("Błąd silnika WebView mapy:", e);
+      }
     }
 
+    // Fallback dla komputerowej przeglądarki Web
     return (
-      <View style={styles.mapErrorContainer}>
-        <Text style={styles.mapErrorText}>
-          {errorMsg || "Szukanie sygnału GPS satelity..."}
+      <View style={styles.webFallbackContainer}>
+        <Text style={styles.webFallbackIcon}>🧭</Text>
+        <Text style={styles.gameModeTitle}>WKRACZASZ DO ŚWIATA STEPQUEST</Text>
+        <Text style={styles.gameModeSubtitle}>
+          Sygnał GPS zabezpieczony sieciowo: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
         </Text>
       </View>
     );
@@ -227,7 +274,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* NOWY PANEL MOCK: PANEL DEWELOPERSKI DO PRZESYŁANIA KROKÓW */}
+      {/* PANEL DEWELOPERSKI (MOCK STEPS) */}
       <View style={styles.mockPanelContainer}>
         <View style={styles.mockHeaderRow}>
           <Text style={styles.mockPanelTitle}>🛠️ PANEL DEWELOPERSKI (MOCK STEPS)</Text>
@@ -284,289 +331,46 @@ export default function DashboardScreen() {
   );
 }
 
-const retroDarkMapStyle = [
-  { "elementType": "geometry", "stylers": [{ "color": "#12181f" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1d2631" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#8a94a6" }] },
-  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#171f2a" }] },
-  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#1d2631" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#212933" }] },
-  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#a38450" }, { "opacity": 0.4 }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0d131a" }] }
-];
-
 const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#12181f',
-  },
-  loadingText: {
-    marginTop: 15,
-    color: '#ebd59b',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  container: { 
-    flex: 1, 
-    padding: 12, 
-    backgroundColor: '#12181f',
-    justifyContent: 'space-between'
-  },
-  profileHeader: {
-    backgroundColor: '#1d2631',
-    borderWidth: 2,
-    borderColor: '#a38450',
-    borderRadius: 4,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Platform.OS === 'ios' ? 45 : 10,
-    zIndex: 10,
-  },
-  avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#2a3642',
-    borderWidth: 2,
-    borderColor: '#d8b26e',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#12181f' },
+  loadingText: { marginTop: 15, color: '#ebd59b', fontWeight: 'bold', fontSize: 16 },
+  container: { flex: 1, padding: 12, backgroundColor: '#12181f', justifyContent: 'space-between' },
+  profileHeader: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, padding: 10, flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'ios' ? 45 : 10, zIndex: 10 },
+  avatarPlaceholder: { width: 44, height: 44, backgroundColor: '#2a3642', borderWidth: 2, borderColor: '#d8b26e', borderRadius: 4, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 22 },
-  profileInfo: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: 'center',
-  },
-  usernameText: {
-    color: '#ebd59b',
-    fontWeight: 'bold',
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
-  levelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  levelText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-    marginRight: 6,
-  },
-  expLabel: {
-    color: '#8a94a6',
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginRight: 4,
-  },
-  expBarBg: {
-    width: 65,
-    height: 8,
-    backgroundColor: '#12181f',
-    borderWidth: 1,
-    borderColor: '#454f5b',
-    borderRadius: 1,
-    overflow: 'hidden'
-  },
-  expBarFill: {
-    height: '100%',
-    backgroundColor: '#717d8c',
-  },
-  stepCoinsContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingLeft: 8,
-  },
-  coinsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  profileInfo: { flex: 1, marginLeft: 10, justifyContent: 'center' },
+  usernameText: { color: '#ebd59b', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
+  levelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  levelText: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginRight: 6 },
+  expLabel: { color: '#8a94a6', fontSize: 11, fontWeight: 'bold', marginRight: 4 },
+  expBarBg: { width: 65, height: 8, backgroundColor: '#12181f', borderWidth: 1, borderColor: '#454f5b', borderRadius: 1, overflow: 'hidden' },
+  expBarFill: { height: '100%', backgroundColor: '#717d8c' },
+  stepCoinsContainer: { alignItems: 'flex-end', justifyContent: 'center', paddingLeft: 8 },
+  coinsRow: { flexDirection: 'row', alignItems: 'center' },
   coinIcon: { fontSize: 18, marginRight: 4 },
-  coinsValue: {
-    color: '#ebd59b',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
-  },
-  coinsLabel: {
-    color: '#ebd59b',
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-    marginTop: -2,
-    opacity: 0.9,
-  },
-  /* STYLE DLA NOWEGO PANELU DEWELOPERSKIEGO */
-  mockPanelContainer: {
-    backgroundColor: '#1a222b',
-    borderWidth: 2,
-    borderColor: '#d8b26e',
-    borderRadius: 4,
-    padding: 10,
-    marginTop: 10,
-  },
-  mockHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  mockPanelTitle: {
-    color: '#ebd59b',
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  mockButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  mockButton: {
-    flex: 1,
-    backgroundColor: '#2a3642',
-    borderWidth: 1,
-    borderColor: '#a38450',
-    paddingVertical: 8,
-    borderRadius: 4,
-    alignItems: 'center',
-  },
-  mockButtonEpic: {
-    borderColor: '#ebd59b',
-    backgroundColor: '#352e25', // Lekko pomarańczowo-złoty akcent dla większych kroków
-  },
-  mockButtonText: {
-    color: '#ebd59b',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  /* KONIEC STYLÓW PANELU DEWELOPERSKIEGO */
-  mainContent: {
-    flex: 1,
-    marginVertical: 12,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#a38450',
-    overflow: 'hidden',
-    backgroundColor: '#171f2a',
-  },
-  webFallbackContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  webFallbackIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  gameModeTitle: {
-    color: '#ebd59b',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-  gameModeSubtitle: {
-    color: '#8a94a6',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 10,
-    lineHeight: 20,
-    maxWidth: 500,
-  },
-  coordinatesBadge: {
-    marginTop: 20,
-    backgroundColor: '#1d2631',
-    borderWidth: 1,
-    borderColor: '#a38450',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-  },
-  coordinatesText: {
-    color: '#ebd59b',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  markerContainer: {
-    backgroundColor: '#1d2631',
-    borderWidth: 2,
-    borderColor: '#ebd59b',
-    padding: 4,
-    borderRadius: 4,
-  },
-  mapErrorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  mapErrorText: {
-    color: '#8a94a6',
-    fontSize: 14,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  bottomNavContainer: {
-    backgroundColor: '#1d2631',
-    borderWidth: 2,
-    borderColor: '#a38450',
-    borderRadius: 4,
-    flexDirection: 'row',
-    height: 80,
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    marginBottom: Platform.OS === 'ios' ? 15 : 0,
-  },
-  navTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    position: 'relative',
-  },
-  activeNavTab: {
-    backgroundColor: '#222d3a',
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  navText: {
-    color: '#8a94a6',
-    fontWeight: 'bold',
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  activeNavText: {
-    color: '#ebd59b',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 4,
-    left: '10%',
-    right: '10%',
-    height: 3,
-    backgroundColor: '#ebd59b',
-    borderRadius: 2,
-  },
-  navDivider: {
-    width: 2,
-    height: '45%',
-    backgroundColor: '#a38450',
-    opacity: 0.4,
-  }
+  coinsValue: { color: '#ebd59b', fontSize: 24, fontWeight: 'bold', textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
+  coinsLabel: { color: '#ebd59b', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 },
+  mockPanelContainer: { backgroundColor: '#1a222b', borderWidth: 2, borderColor: '#d8b26e', borderRadius: 4, padding: 10, marginTop: 10 },
+  mockHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mockPanelTitle: { color: '#ebd59b', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
+  mockButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  mockButton: { flex: 1, backgroundColor: '#2a3642', borderWidth: 1, borderColor: '#a38450', paddingVertical: 8, borderRadius: 4, alignItems: 'center' },
+  mockButtonEpic: { borderColor: '#ebd59b', backgroundColor: '#352e25' },
+  mockButtonText: { color: '#ebd59b', fontSize: 12, fontWeight: 'bold', letterSpacing: 0.5 },
+  mainContent: { flex: 1, marginVertical: 12, borderRadius: 4, borderWidth: 2, borderColor: '#a38450', overflow: 'hidden', backgroundColor: '#171f2a' },
+  webFallbackContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  webFallbackIcon: { fontSize: 48, marginBottom: 16 },
+  gameModeTitle: { color: '#ebd59b', fontSize: 18, fontWeight: 'bold', letterSpacing: 1, textAlign: 'center' },
+  gameModeSubtitle: { color: '#8a94a6', fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 20, maxWidth: 500 },
+  map: { width: '100%', height: '100%' },
+  mapErrorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  mapErrorText: { color: '#8a94a6', fontSize: 14, textAlign: 'center', fontWeight: 'bold' },
+  bottomNavContainer: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, flexDirection: 'row', height: 80, alignItems: 'center', paddingHorizontal: 5, marginBottom: Platform.OS === 'ios' ? 15 : 0 },
+  navTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' },
+  activeNavTab: { backgroundColor: '#222d3a' },
+  navIcon: { fontSize: 20, marginBottom: 2 },
+  navText: { color: '#8a94a6', fontWeight: 'bold', fontSize: 12, letterSpacing: 0.5 },
+  activeNavText: { color: '#ebd59b' },
+  activeIndicator: { position: 'absolute', bottom: 4, left: '10%', right: '10%', height: 3, backgroundColor: '#ebd59b', borderRadius: 2 },
+  navDivider: { width: 2, height: '45%', backgroundColor: '#a38450', opacity: 0.4 }
 });
