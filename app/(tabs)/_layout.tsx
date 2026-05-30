@@ -1,50 +1,54 @@
 import { Tabs } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons'; // Zestaw darmowych, popularnych ikon
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function TabsLayout() {
   return (
     <Tabs
+    initialRouteName="dashboard"
       screenOptions={{
-        // Ukrywamy domyślny górny pasek z nazwą pliku (mamy własne, ładniejsze nagłówki na ekranach)
         headerShown: false,
-        // Kolor aktywnej ikonki (nasz motyw przewodni - niebieski)
-        tabBarActiveTintColor: '#2980b9',
-        // Kolor nieaktywnej ikonki
-        tabBarInactiveTintColor: '#95a5a6',
-        // Stylowanie samego paska na dole
+        tabBarActiveTintColor: '#ebd59b', // Zmienione z niebieskiego na złoty, pasujący do stylistyki RPG
+        tabBarInactiveTintColor: '#8a94a6',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 1,
-          borderTopColor: '#ecf0f1',
-          height: 60,
+          backgroundColor: '#1d2631', // Dopasowane do ciemnego motywu gry
+          borderTopWidth: 2,
+          borderTopColor: '#a38450',
+          height: 65,
           paddingBottom: 10,
           paddingTop: 5,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: 'bold',
+          letterSpacing: 0.5,
         }
       }}
     >
-      {/* 1. Przycisk: Dashboard */}
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Pulpit',
+          title: 'MAPA',
           tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="home" size={24} color={color} />
+            <FontAwesome5 name="compass" size={22} color={color} />
           ),
         }}
       />
 
-      {/* 2. Przycisk: Profil Gracza */}
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: 'PROFIL',
           tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="user-alt" size={24} color={color} />
+            <FontAwesome5 name="user-alt" size={20} color={color} />
           ),
+        }}
+      />
+
+      {/* TAJNY PANEL: Ukryty przed zwykłymi użytkownikami na dolnym pasku */}
+      <Tabs.Screen
+        name="developerPanel"
+        options={{
+          href: null, // <-- KLUCZOWE: Sprawia, że zakładka nie pojawia się w menu na dole!
         }}
       />
     </Tabs>

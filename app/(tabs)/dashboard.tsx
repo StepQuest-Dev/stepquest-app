@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import { Pedometer } from 'expo-sensors';
+import { WebView } from 'react-native-webview';
 import api from '../../services/api';
 import GameDiagnostics from '../../components/GameDiagnostics';
 
@@ -13,7 +14,6 @@ export default function DashboardScreen() {
   const [username, setUsername] = useState('');
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false); // Status wysyłania mocków
   
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -23,6 +23,7 @@ export default function DashboardScreen() {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
 
+  // Funkcja dodająca logi w tle (wyświetlą się podczas ładowania)
   const addLog = (msg: string) => {
     console.log(`[DASHBOARD] ${msg}`);
     setDebugLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -46,28 +47,19 @@ export default function DashboardScreen() {
     }
   };
 
-  // MOCK: Funkcja deweloperska do ręcznego nabijania kroków i wysyłki
-  const handleAddMockSteps = async (amount: number) => {
-    setSyncing(true);
-    const updatedSteps = steps + amount;
-    setSteps(updatedSteps);
-    
-    console.log(`🚀 [DEV MOCK] Wysyłam ${updatedSteps} kroków do backendu...`);
-    await syncStepsWithServer(updatedSteps);
-    setSyncing(false);
-  };
-
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
     let isMounted = true;
 
     const fetchDashboardAndStartPedometer = async () => {
       try {
+        // 1. Pobieranie danych profilu
         addLog(`Uderzam do NestJS pod URL: ${api.defaults.baseURL}/auth/me`);
         const userResponse = await api.get('/auth/me');
         addLog("✅ Sukces: Dane profilu odebrane z backendu.");
         if (isMounted) setUsername(userResponse.data.username || userResponse.data.email);
 
+        // 2. Pobieranie GPS
         addLog("Żądanie uprawnień do lokalizacji satelitarnej...");
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
         if (gpsStatus === 'granted') {
@@ -80,28 +72,51 @@ export default function DashboardScreen() {
           setErrorMsg('Brak uprawnień do GPS.');
         }
 
+        // 3. OBSŁUGA KROKOMIERZA (PEDOMETER) - ZABEZPIECZONA PRZED CRASHEM ANDROIDA
         if (Platform.OS !== 'web') {
           addLog("Sprawdzam dostępność czujników ruchu w telefonie...");
           const isPedometerAvailable = await Pedometer.isAvailableAsync();
           
           if (isPedometerAvailable) {
-            const now = new Date();
-            const startOfDay = new Date(now);
-            startOfDay.setHours(0, 0, 0, 0);
+            // getStepCountAsync wywołujemy TYLKO na iOS
+            if (Platform.OS === 'ios') {
+              const now = new Date();
+              const startOfDay = new Date(now);
+              startOfDay.setHours(0, 0, 0, 0);
 
-            addLog("Pobieram zliczone dzisiaj kroki sprzętowe...");
-            const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
-            addLog(`✅ Czujnik zwrócił: ${stepCountResult.steps} kroków.`);
-            if (isMounted) {
-              setSteps(stepCountResult.steps);
-              syncStepsWithServer(stepCountResult.steps); 
+              addLog("Pobieram zliczone dzisiaj kroki sprzętowe...");
+              const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
+              addLog(`✅ Czujnik zwrócił: ${stepCountResult.steps} kroków.`);
+              if (isMounted) {
+                setSteps(stepCountResult.steps);
+                syncStepsWithServer(stepCountResult.steps); 
+              }
+            } else {
+              // Na Androidzie pobieramy ostatni stan z bazy danych NestJS
+              try {
+                addLog("Pobieram ostatni stan kroków z serwera (Android)...");
+                const stepsResponse = await api.get('/steps/latest');
+                if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
+              } catch (e) {
+                addLog("⚠️ Brak poprzednich wpisów na serwerze. Start od 0.");
+                if (isMounted) setSteps(0);
+              }
             }
 
+            // Nasłuchiwanie kroków na żywo
             subscription = Pedometer.watchStepCount((result) => {
               if (isMounted) {
-                const newSteps = result.steps ?? stepCountResult.steps;
-                setSteps(newSteps);
-                syncStepsWithServer(newSteps);
+                if (Platform.OS === 'ios') {
+                  setSteps(result.steps);
+                  syncStepsWithServer(result.steps);
+                } else {
+                  // Poprawne sumowanie kroków na żywo dla Androida
+                  setSteps((prevSteps) => {
+                    const updatedSteps = prevSteps + (result.steps ?? 0);
+                    syncStepsWithServer(updatedSteps);
+                    return updatedSteps;
+                  });
+                }
               }
             });
           } else {
@@ -117,6 +132,7 @@ export default function DashboardScreen() {
         addLog("❌ WYSTĄPIŁ BŁĄD PODCZAS ŁADOWANIA STRONY!");
         console.error('❌ Błąd aplikacji:', error);
 
+        // Przechwytujemy detale błędu do konsoli GameDiagnostics
         let details = `Wiadomość: ${error.message}\n`;
         if (error.response) {
           details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
@@ -148,6 +164,7 @@ export default function DashboardScreen() {
     };
   }, [networkErrorDetails]);
 
+  // --- OTO NASZA DIAGNOSTYKA SIECIOWA ---
   if (loading) {
     return (
       <GameDiagnostics
@@ -158,8 +175,8 @@ export default function DashboardScreen() {
     );
   }
 
-  // PRZENIESIONA I ZASYNCHRONIZOWANA REPREZENTACJA MAPY Z WEBVIEW (MROCZNY LEAFLET)
   const renderMapArea = () => {
+    // Jeśli jeszcze nie mamy GPS, pokazujemy błąd/ładowanie
     if (!location) {
       return (
         <View style={styles.mapErrorContainer}>
@@ -170,7 +187,7 @@ export default function DashboardScreen() {
       );
     }
 
-    // Kod HTML budujący silnik Leaflet. Styl CSS "invert" generuje mroczny retro-klimat.
+    // Mroczny silnik Leaflet w WebView
     const mapHtml = `
       <!DOCTYPE html>
       <html>
@@ -212,8 +229,6 @@ export default function DashboardScreen() {
 
     if (Platform.OS !== 'web') {
       try {
-        // Schowane dynamiczne wymaganie modułu WebView chroni przed crashami weba
-        const { WebView } = require('react-native-webview');
         return (
           <WebView
             originWhitelist={['*']}
@@ -229,7 +244,6 @@ export default function DashboardScreen() {
       }
     }
 
-    // Fallback dla komputerowej przeglądarki Web
     return (
       <View style={styles.webFallbackContainer}>
         <Text style={styles.webFallbackIcon}>🧭</Text>
@@ -274,31 +288,6 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* PANEL DEWELOPERSKI (MOCK STEPS) */}
-      <View style={styles.mockPanelContainer}>
-        <View style={styles.mockHeaderRow}>
-          <Text style={styles.mockPanelTitle}>🛠️ PANEL DEWELOPERSKI (MOCK STEPS)</Text>
-          {syncing && <ActivityIndicator size="small" color="#ebd59b" />}
-        </View>
-        <View style={styles.mockButtonsRow}>
-          <TouchableOpacity 
-            style={styles.mockButton} 
-            onPress={() => handleAddMockSteps(1000)}
-            disabled={syncing}
-          >
-            <Text style={styles.mockButtonText}>+1 000 KROKÓW</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.mockButton, styles.mockButtonEpic]} 
-            onPress={() => handleAddMockSteps(5000)}
-            disabled={syncing}
-          >
-            <Text style={styles.mockButtonText}>+5 000 KROKÓW</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* SEKCJA MAPY / OKNA GRY */}
       <View style={styles.mainContent}>
         {renderMapArea()}
@@ -332,8 +321,6 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#12181f' },
-  loadingText: { marginTop: 15, color: '#ebd59b', fontWeight: 'bold', fontSize: 16 },
   container: { flex: 1, padding: 12, backgroundColor: '#12181f', justifyContent: 'space-between' },
   profileHeader: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, padding: 10, flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'ios' ? 45 : 10, zIndex: 10 },
   avatarPlaceholder: { width: 44, height: 44, backgroundColor: '#2a3642', borderWidth: 2, borderColor: '#d8b26e', borderRadius: 4, justifyContent: 'center', alignItems: 'center' },
@@ -350,19 +337,11 @@ const styles = StyleSheet.create({
   coinIcon: { fontSize: 18, marginRight: 4 },
   coinsValue: { color: '#ebd59b', fontSize: 24, fontWeight: 'bold', textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
   coinsLabel: { color: '#ebd59b', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 },
-  mockPanelContainer: { backgroundColor: '#1a222b', borderWidth: 2, borderColor: '#d8b26e', borderRadius: 4, padding: 10, marginTop: 10 },
-  mockHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  mockPanelTitle: { color: '#ebd59b', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
-  mockButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  mockButton: { flex: 1, backgroundColor: '#2a3642', borderWidth: 1, borderColor: '#a38450', paddingVertical: 8, borderRadius: 4, alignItems: 'center' },
-  mockButtonEpic: { borderColor: '#ebd59b', backgroundColor: '#352e25' },
-  mockButtonText: { color: '#ebd59b', fontSize: 12, fontWeight: 'bold', letterSpacing: 0.5 },
   mainContent: { flex: 1, marginVertical: 12, borderRadius: 4, borderWidth: 2, borderColor: '#a38450', overflow: 'hidden', backgroundColor: '#171f2a' },
   webFallbackContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   webFallbackIcon: { fontSize: 48, marginBottom: 16 },
   gameModeTitle: { color: '#ebd59b', fontSize: 18, fontWeight: 'bold', letterSpacing: 1, textAlign: 'center' },
   gameModeSubtitle: { color: '#8a94a6', fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 20, maxWidth: 500 },
-  map: { width: '100%', height: '100%' },
   mapErrorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   mapErrorText: { color: '#8a94a6', fontSize: 14, textAlign: 'center', fontWeight: 'bold' },
   bottomNavContainer: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, flexDirection: 'row', height: 80, alignItems: 'center', paddingHorizontal: 5, marginBottom: Platform.OS === 'ios' ? 15 : 0 },
