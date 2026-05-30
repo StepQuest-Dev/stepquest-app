@@ -1,28 +1,12 @@
-import { Tabs } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { tabsScreenOptions } from '../../styles/tabs/Layout'; // Import wyodrębnionego obiektu ze stylami
 
 export default function TabsLayout() {
   return (
     <Tabs
-    initialRouteName="dashboard"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#ebd59b', // Zmienione z niebieskiego na złoty, pasujący do stylistyki RPG
-        tabBarInactiveTintColor: '#8a94a6',
-        tabBarStyle: {
-          backgroundColor: '#1d2631', // Dopasowane do ciemnego motywu gry
-          borderTopWidth: 2,
-          borderTopColor: '#a38450',
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 5,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: 'bold',
-          letterSpacing: 0.5,
-        }
-      }}
+      initialRouteName="dashboard"
+      screenOptions={tabsScreenOptions}
     >
       <Tabs.Screen
         name="dashboard"
