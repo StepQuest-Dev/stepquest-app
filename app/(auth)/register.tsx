@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../services/api';
+import StyledTextInput from '../../components/StyledTextInput';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -57,9 +58,19 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Dołącz do StepQuest</Text>
+      {/* Kontener wyśrodkowujący logo StepQuest */}
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('@/assets/images/logo.png')} // Korzysta z działającego aliasu @/
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
 
-      <TextInput
+      <Text style={styles.header}>DOŁĄCZ DO STEPQUEST</Text>
+
+      {/* Dynamiczne pola tekstowe ze zintegrowanym placeholderem dostosowanym do systemu */}
+      <StyledTextInput
         style={styles.input}
         placeholder="E-mail"
         value={email}
@@ -67,14 +78,16 @@ export default function RegisterScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
+      
+      <StyledTextInput
         style={styles.input}
         placeholder="Nazwa użytkownika"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
       />
-      <TextInput
+      
+      <StyledTextInput
         style={styles.input}
         placeholder="Hasło"
         value={password}
@@ -89,7 +102,7 @@ export default function RegisterScreen() {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color="#ebd59b" />
         ) : (
           <Text style={styles.buttonText}>ZAREJESTRUJ SIĘ</Text>
         )}
@@ -107,43 +120,66 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: 'center', 
     padding: 20, 
-    backgroundColor: '#f4f6f8' 
+    backgroundColor: '#12181f' // Ciemne tło RPG
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  logo: {
+    width: 160,  
+    height: 160, 
   },
   header: { 
     fontSize: 28, 
     fontWeight: 'bold', 
     textAlign: 'center', 
     marginBottom: 40, 
-    color: '#2c3e50' 
+    color: '#ebd59b', // Złoty kolor tekstu
+    letterSpacing: 2,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 1
   },
   input: { 
-    backgroundColor: '#fff', 
+    backgroundColor: '#212933', // Granatowo-szare tło pól tekstowych
     padding: 15, 
-    borderRadius: 8, 
+    borderRadius: 4, // Ostre, pikselowe krawędzie
     marginBottom: 15, 
-    borderWidth: 1, 
-    borderColor: '#ddd',
-    color:"#888"
-      },
+    borderWidth: 2, 
+    borderColor: '#a38450', // Ciemnozłota ramka
+    color: '#ebd59b', 
+    fontSize: 16
+  },
   button: { 
-    backgroundColor: '#2980b9', 
+    backgroundColor: '#2a3642', 
     padding: 15, 
-    borderRadius: 8, 
+    borderRadius: 4, 
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#d8b26e', // Jasnozłota ramka przycisku
+    marginTop: 10
   },
   buttonDisabled: { 
-    backgroundColor: '#7f8c8d' 
+    backgroundColor: '#1a2026',
+    borderColor: '#555'
   },
   buttonText: { 
-    color: '#fff', 
+    color: '#ebd59b', 
     fontWeight: 'bold', 
-    fontSize: 16 
+    fontSize: 18,
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1
   },
   linkText: { 
     textAlign: 'center', 
-    color: '#27ae60', 
-    fontWeight: 'bold' 
+    color: '#a38450', 
+    fontWeight: 'bold',
+    fontSize: 15,
+    marginTop: 10,
+    textDecorationLine: 'underline'
   }
-  
 });

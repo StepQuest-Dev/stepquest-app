@@ -2,14 +2,18 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// Pamiętaj: localhost dla Web/Emulacji, Twoje IP jeśli testujesz na fizycznym telefonie
-//const API_URL = 'http://localhost:3000/api/v1';
+// Jesli chcesz na localhoscie
+//const API_URL = Platform.OS === 'web' 
+  //? 'http://localhost:3000/api/v1'
+  //: `http://${process.env.EXPO_PUBLIC_LOCAL_IP}:3000/api/v1`; // Upewnij się, że EXPO_PUBLIC_LOCAL_IP jest ustawione na adres IP twojego komputera w sieci lokalnej 192.168.x.x w pliku .env
 
-//Zalecenia mistrza fronenda aby dzialalo na LTE i inni mogli sie łączyć!!!!!
-// 1. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
-// 2. kopiujesz kurwa ten urla z cloudflare'a
-// 3. nowa konsola komenda ta -> npx expo start -c --tunnel
-const API_URL = 'https://ins-bags-anywhere-famous.trycloudflare.com/api/v1';
+//Zalecenia mistrza fronenda aby dzialalo (włączając LTE)
+// 1. instalujesz ngroka npx install ngrok
+// 2. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
+// 3. kopiujesz kurwa ten urla z cloudflare'a i wklejasz na API_URL poniżej
+// 4. nowa konsola komenda ta -> npx expo start -c --tunnel / jeśli nie działa to npx expo start --tunnel
+// 5. Do linka poniżej https://dluga-nazwa-linka/api/vi
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const api = axios.create({
   baseURL: API_URL,

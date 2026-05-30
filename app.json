@@ -4,13 +4,12 @@
     "slug": "stepquest-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "stepquestapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+    "resizeMode": "contain",
+    "backgroundColor": "#12181f"
     },
     "ios": {
       "supportsTablet": true
@@ -23,6 +22,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "navigationBar": {
+        "visible": "immersive",
+        "backgroundColor": "#12181f"
+      },
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
         "android.permission.ACTIVITY_RECOGNITION"
