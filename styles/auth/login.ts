@@ -66,5 +66,19 @@ export const styles = StyleSheet.create({
         fontSize: 15,
         marginTop: 10,
         textDecorationLine: 'underline'
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#212933',
+        borderRadius: 4,
+        marginBottom: 15,
+        borderWidth: 2,
+        borderColor: '#a38450',
+    },
+    eyeIcon: {
+        padding: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
     }
 });
