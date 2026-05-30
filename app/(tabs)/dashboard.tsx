@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { useRouter, useNavigation } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Pedometer } from 'expo-sensors';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Platform, Text, TouchableOpacity, View, Modal } from 'react-native';
 import { WebView } from 'react-native-webview';
-import api from '../../services/api';
 import GameDiagnostics from '../../components/GameDiagnostics';
+import api from '../../services/api';
+import { styles } from '../../styles/tabs/Dashboard';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -14,180 +14,173 @@ export default function DashboardScreen() {
   const [username, setUsername] = useState('');
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
-  
+
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- STANY DLA SYSTEMU DIAGNOSTYKI ---
+  // --- STAN UKRYWANIA PASKA ---
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [syncModalVisible, setSyncModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // --- STANY DIAGNOSTYKI ---
   const [currentStatus, setCurrentStatus] = useState('Inicjalizacja świata gry...');
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
 
-  // Funkcja dodająca logi w tle (wyświetlą się podczas ładowania)
+  // Zmiana opcji nawigacji ZAWSZE, gdy zmieni się stan isNavVisible (kliknięcie w mapę)
+  useEffect(() => {
+    navigation.setOptions({ 
+      tabBarStyle: { display: isNavVisible ? 'flex' : 'none' }, 
+      headerShown: false 
+    });
+  }, [isNavVisible, navigation]);
+
   const addLog = (msg: string) => {
     console.log(`[DASHBOARD] ${msg}`);
     setDebugLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
     setCurrentStatus(msg);
   };
 
-  useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: { display: 'none' },
-      headerShown: false,
-    });
-  }, [navigation]);
-
-  // FUNKCJA SYNCHRONIZACJI KROKÓW Z SERWEREM NestJS
   const syncStepsWithServer = async (currentSteps: number) => {
     try {
       await api.post('/steps', { count: currentSteps });
-      addLog(`Sync kroków udany: ${currentSteps}`);
     } catch (err) {
-      console.error('Błąd synchronizacji kroków z serwerem:', err);
+      console.error('Błąd synchronizacji kroków:', err);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const fetchLatestSteps = async () => {
+        try {
+          const res = await api.get('/steps/latest');
+          const serverSteps = res.data.steps || res.data.count || 0;
+          if (isActive) setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
+        } catch (e) { }
+      };
+      fetchLatestSteps();
+      return () => { isActive = false; };
+    }, [])
+  );
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
     let isMounted = true;
+    let watchAccumulator = 0;
 
     const fetchDashboardAndStartPedometer = async () => {
       try {
-        // 1. Pobieranie danych profilu
-        addLog(`Uderzam do NestJS pod URL: ${api.defaults.baseURL}/auth/me`);
+        addLog('Uderzam do NestJS po dane profilu...');
         const userResponse = await api.get('/auth/me');
-        addLog("✅ Sukces: Dane profilu odebrane z backendu.");
         if (isMounted) setUsername(userResponse.data.username || userResponse.data.email);
+        addLog('✅ Zalogowano wojownika: ' + (userResponse.data.username || userResponse.data.email).toUpperCase());
 
-        // 2. Pobieranie GPS
-        addLog("Żądanie uprawnień do lokalizacji satelitarnej...");
+        addLog('Żądanie uprawnień do lokalizacji satelitarnej...');
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
         if (gpsStatus === 'granted') {
-          addLog("✅ Uprawnienia GPS przyznane. Pobieram pozycję gracza...");
+          addLog('✅ Uprawnienia GPS przyznane. Ustalanie pozycji...');
           let currentByGps = await Location.getCurrentPositionAsync({});
-          addLog("✅ Pozycja GPS pobrana pomyślnie.");
           if (isMounted) setLocation(currentByGps);
+          addLog('✅ Sygnał GPS zabezpieczony.');
         } else {
-          addLog("⚠️ Odmowa uprawnień GPS.");
+          addLog('⚠️ Odmowa uprawnień GPS.');
           setErrorMsg('Brak uprawnień do GPS.');
         }
 
-        // 3. OBSŁUGA KROKOMIERZA (PEDOMETER) - ZABEZPIECZONA PRZED CRASHEM ANDROIDA
         if (Platform.OS !== 'web') {
-          addLog("Sprawdzam dostępność czujników ruchu w telefonie...");
+          addLog('Sprawdzanie czujników ruchu telefonu...');
           const isPedometerAvailable = await Pedometer.isAvailableAsync();
-          
           if (isPedometerAvailable) {
-            // getStepCountAsync wywołujemy TYLKO na iOS
-            if (Platform.OS === 'ios') {
-              const now = new Date();
-              const startOfDay = new Date(now);
-              startOfDay.setHours(0, 0, 0, 0);
-
-              addLog("Pobieram zliczone dzisiaj kroki sprzętowe...");
-              const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
-              addLog(`✅ Czujnik zwrócił: ${stepCountResult.steps} kroków.`);
-              if (isMounted) {
-                setSteps(stepCountResult.steps);
-                syncStepsWithServer(stepCountResult.steps); 
-              }
-            } else {
-              // Na Androidzie pobieramy ostatni stan z bazy danych NestJS
-              try {
-                addLog("Pobieram ostatni stan kroków z serwera (Android)...");
-                const stepsResponse = await api.get('/steps/latest');
-                if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
-              } catch (e) {
-                addLog("⚠️ Brak poprzednich wpisów na serwerze. Start od 0.");
-                if (isMounted) setSteps(0);
-              }
+            addLog('✅ Znaleziono sprzętowy krokomierz.');
+            try {
+              addLog('Pobieram historię kroków z bazy...');
+              const res = await api.get('/steps/latest');
+              if (isMounted) setSteps(res.data.steps || res.data.count || 0);
+              addLog(`✅ Baza wczytana: ${res.data.steps || res.data.count || 0} kroków.`);
+            } catch (e) { 
+              addLog('⚠️ Brak poprzednich wpisów na serwerze.');
             }
 
-            // Nasłuchiwanie kroków na żywo
+            addLog('Uruchamianie nasłuchu aktywności w tle...');
             subscription = Pedometer.watchStepCount((result) => {
               if (isMounted) {
-                if (Platform.OS === 'ios') {
-                  setSteps(result.steps);
-                  syncStepsWithServer(result.steps);
-                } else {
-                  // Poprawne sumowanie kroków na żywo dla Androida
-                  setSteps((prevSteps) => {
-                    const updatedSteps = prevSteps + (result.steps ?? 0);
-                    syncStepsWithServer(updatedSteps);
-                    return updatedSteps;
+                const hardwareCounter = result.steps;
+                const delta = hardwareCounter - watchAccumulator;
+                if (delta > 0) {
+                  setSteps((prevTotal) => {
+                    const updatedTotal = prevTotal + delta;
+                    syncStepsWithServer(updatedTotal);
+                    return updatedTotal;
                   });
+                  watchAccumulator = hardwareCounter;
                 }
               }
             });
           } else {
-            addLog("⚠️ Czujnik kroków (Pedometer) jest niedostępny.");
+            addLog('⚠️ Brak sprzętowego wsparcia dla pedometru.');
           }
         } else {
-          addLog("Uruchomiono na Web. Pobieram ostatnie dane kroków z bazy...");
+          addLog('Wykryto przeglądarkę Web. Ładowanie z chmury...');
           const stepsResponse = await api.get('/steps/latest');
           if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
         }
 
-      } catch (error: any) {
-        addLog("❌ WYSTĄPIŁ BŁĄD PODCZAS ŁADOWANIA STRONY!");
-        console.error('❌ Błąd aplikacji:', error);
+        addLog('🚀 Inicjalizacja świata zakończona pomyślnie!');
 
-        // Przechwytujemy detale błędu do konsoli GameDiagnostics
+      } catch (error: any) {
+        addLog('❌ WYSTĄPIŁ BŁĄD SIECIOWY!');
         let details = `Wiadomość: ${error.message}\n`;
-        if (error.response) {
-          details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
-        } else if (error.request) {
-          details += `Wysłano żądanie, brak jakiejkolwiek odpowiedzi sieciowej. Serwer NestJS prawdopodobnie nie działa lub zablokował go Firewall. IP komputera: ${api.defaults.baseURL}`;
-        }
+        if (error.response) details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
         if (isMounted) setNetworkErrorDetails(details);
 
         if (error.response?.status === 401) {
-          addLog("Sesja wygasła (401). Przekierowanie do logowania...");
-          if (Platform.OS === 'web') {
-            if (typeof window !== 'undefined') localStorage.removeItem('userToken');
-          } else {
-            await SecureStore.deleteItemAsync('userToken');
-          }
+          addLog('Sesja wygasła. Wylogowywanie...');
           router.replace('/(auth)/login');
-          return;
         }
       } finally {
-        if (isMounted && !networkErrorDetails) setLoading(false);
+        // Małe opóźnienie, żeby gracz mógł przeczytać na zielono, że wszystko gra, zanim konsola zniknie
+        if (isMounted && !networkErrorDetails) {
+          setTimeout(() => {
+            setLoading(false);
+          }, 600);
+        }
       }
     };
 
     fetchDashboardAndStartPedometer();
-
     return () => {
       isMounted = false;
       if (subscription) subscription.remove();
     };
-  }, [networkErrorDetails]);
+  }, []);
 
-  // --- OTO NASZA DIAGNOSTYKA SIECIOWA ---
-  if (loading) {
+  const onWebViewMessage = (event: any) => {
+    if (event.nativeEvent.data === 'toggle_nav') {
+      setIsNavVisible((prev) => !prev);
+    }
+  };
+
+  if (loading || networkErrorDetails) {
     return (
-      <GameDiagnostics
-        currentStatus={currentStatus}
-        debugLogs={debugLogs}
-        networkErrorDetails={networkErrorDetails}
+      <GameDiagnostics 
+        currentStatus={currentStatus} 
+        debugLogs={debugLogs} 
+        networkErrorDetails={networkErrorDetails} 
       />
     );
   }
 
   const renderMapArea = () => {
-    // Jeśli jeszcze nie mamy GPS, pokazujemy błąd/ładowanie
     if (!location) {
       return (
         <View style={styles.mapErrorContainer}>
-          <Text style={styles.mapErrorText}>
-            {errorMsg || "Szukanie sygnału GPS satelity..."}
-          </Text>
+          <Text style={styles.mapErrorText}>{errorMsg || "Szukanie sygnału GPS satelity..."}</Text>
         </View>
       );
     }
 
-    // Mroczny silnik Leaflet w WebView
     const mapHtml = `
       <!DOCTYPE html>
       <html>
@@ -222,134 +215,109 @@ export default function DashboardScreen() {
               L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: cowboyIcon})
                 .addTo(map)
                 .bindPopup('<b>Tutaj jesteś!</b><br>Eksploruj świat StepQuest.');
+
+              map.on('click', function() {
+                  window.ReactNativeWebView.postMessage('toggle_nav');
+              });
           </script>
       </body>
       </html>
     `;
 
     if (Platform.OS !== 'web') {
-      try {
-        return (
-          <WebView
-            originWhitelist={['*']}
-            source={{ html: mapHtml }}
-            style={{ flex: 1, backgroundColor: '#171f2a' }}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-          />
-        );
-      } catch (e) {
-        console.warn("Błąd silnika WebView mapy:", e);
-      }
+      return (
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: mapHtml }}
+          style={{ flex: 1, backgroundColor: '#171f2a' }}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          onMessage={onWebViewMessage}
+        />
+      );
     }
 
     return (
-      <View style={styles.webFallbackContainer}>
+      <TouchableOpacity activeOpacity={1} style={styles.webFallbackContainer} onPress={() => setIsNavVisible(!isNavVisible)}>
         <Text style={styles.webFallbackIcon}>🧭</Text>
-        <Text style={styles.gameModeTitle}>WKRACZASZ DO ŚWIATA STEPQUEST</Text>
-        <Text style={styles.gameModeSubtitle}>
-          Sygnał GPS zabezpieczony sieciowo: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
-        </Text>
-      </View>
+        <Text style={styles.gameModeTitle}>MAPA WEB</Text>
+        <Text style={styles.gameModeSubtitle}>Kliknij tło, aby ukryć/pokazać nawigację.</Text>
+      </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
-      
-      {/* GÓRNY PANEL PROFILU */}
-      <View style={styles.profileHeader}>
-        <TouchableOpacity 
-          style={styles.avatarPlaceholder} 
-          onPress={() => router.push('/(tabs)/profile')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.avatarText}>🤠</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.profileInfo}>
-          <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
-          <View style={styles.levelRow}>
-            <Text style={styles.levelText}>Lv. 15</Text>
-            <Text style={styles.expLabel}>EX</Text>
-            <View style={styles.expBarBg}>
-              <View style={[styles.expBarFill, { width: '35%' }]} />
-            </View>
+
+      {/* --- WŁASNY, STYLIZOWANY ALERT RPG --- */}
+      <Modal animationType="fade" transparent={true} visible={syncModalVisible} onRequestClose={() => setSyncModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.customAlertBox}>
+            <Text style={styles.alertTitle}>🛡️ SYNCHRONIZACJA</Text>
+            {successMessage ? (
+              <View>
+                <Text style={styles.alertMessageSuccess}>{successMessage}</Text>
+                <TouchableOpacity 
+                  style={styles.alertButtonOk} 
+                  onPress={() => { setSyncModalVisible(false); setTimeout(() => setSuccessMessage(null), 300); }}
+                >
+                  <Text style={styles.alertButtonText}>DOBRZE</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.alertMessage}>Czy chcesz przymusowo zsynchronizować zebrane {steps} kroków z bazą danych?</Text>
+                <View style={styles.alertButtonsRow}>
+                  <TouchableOpacity style={styles.alertButtonCancel} onPress={() => setSyncModalVisible(false)}>
+                    <Text style={styles.alertButtonTextCancel}>NIE</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.alertButtonConfirm} 
+                    onPress={() => { syncStepsWithServer(steps); setSuccessMessage('Kroki zostały pomyślnie zapisane w chmurze!'); }}
+                  >
+                    <Text style={styles.alertButtonText}>TAK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
+      </Modal>
 
-        <View style={styles.stepCoinsContainer}>
-          <View style={styles.coinsRow}>
-            <Text style={styles.coinIcon}>🪙</Text>
-            <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
-          </View>
-          <Text style={styles.coinsLabel}>STEP COINS</Text>
-        </View>
-      </View>
-
-      {/* SEKCJA MAPY / OKNA GRY */}
-      <View style={styles.mainContent}>
+      {/* 1. TŁO: PEŁNOEKRANOWA MAPA */}
+      <View style={styles.mapContainer}>
         {renderMapArea()}
       </View>
 
-      {/* DOLNE MENU RPG */}
-      <View style={styles.bottomNavContainer}>
-        <TouchableOpacity style={[styles.navTab, styles.activeNavTab]}>
-          <Text style={styles.navIcon}>🧭</Text>
-          <Text style={[styles.navText, styles.activeNavText]}>MAPA</Text>
-          <View style={styles.activeIndicator} />
-        </TouchableOpacity>
+      {/* 2. GÓRNA NAKŁADKA (PROFIL + MONETY) */}
+      <View style={styles.topOverlay} pointerEvents="box-none">
+        <View style={styles.profileHeader}>
+          <TouchableOpacity style={styles.avatarPlaceholder} onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.7}>
+            <Text style={styles.avatarText}>🤠</Text>
+          </TouchableOpacity>
 
-        <View style={styles.navDivider} />
+          <View style={styles.profileInfo}>
+            <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
+            <View style={styles.levelRow}>
+              <Text style={styles.levelText}>Lv. 15</Text>
+              <Text style={styles.expLabel}>EX</Text>
+              <View style={styles.expBarBg}>
+                <View style={[styles.expBarFill, { width: '35%' }]} />
+              </View>
+            </View>
+          </View>
 
-        <TouchableOpacity style={styles.navTab} onPress={() => alert('Sklep wkrótce!')}>
-          <Text style={styles.navIcon}>💰</Text>
-          <Text style={styles.navText}>SKLEP</Text>
-        </TouchableOpacity>
-
-        <View style={styles.navDivider} />
-
-        <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkrótce!')}>
-          <Text style={styles.navIcon}>🏡</Text>
-          <Text style={styles.navText}>OSADA</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.stepCoinsContainer} onPress={() => setSyncModalVisible(true)} activeOpacity={0.7}>
+            <View style={styles.coinsRow}>
+              <Text style={styles.coinIcon}>🪙</Text>
+              <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
+            </View>
+            <Text style={styles.coinsLabel}>STEP COINS</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12, backgroundColor: '#12181f', justifyContent: 'space-between' },
-  profileHeader: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, padding: 10, flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'ios' ? 45 : 10, zIndex: 10 },
-  avatarPlaceholder: { width: 44, height: 44, backgroundColor: '#2a3642', borderWidth: 2, borderColor: '#d8b26e', borderRadius: 4, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 22 },
-  profileInfo: { flex: 1, marginLeft: 10, justifyContent: 'center' },
-  usernameText: { color: '#ebd59b', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
-  levelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  levelText: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginRight: 6 },
-  expLabel: { color: '#8a94a6', fontSize: 11, fontWeight: 'bold', marginRight: 4 },
-  expBarBg: { width: 65, height: 8, backgroundColor: '#12181f', borderWidth: 1, borderColor: '#454f5b', borderRadius: 1, overflow: 'hidden' },
-  expBarFill: { height: '100%', backgroundColor: '#717d8c' },
-  stepCoinsContainer: { alignItems: 'flex-end', justifyContent: 'center', paddingLeft: 8 },
-  coinsRow: { flexDirection: 'row', alignItems: 'center' },
-  coinIcon: { fontSize: 18, marginRight: 4 },
-  coinsValue: { color: '#ebd59b', fontSize: 24, fontWeight: 'bold', textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
-  coinsLabel: { color: '#ebd59b', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 },
-  mainContent: { flex: 1, marginVertical: 12, borderRadius: 4, borderWidth: 2, borderColor: '#a38450', overflow: 'hidden', backgroundColor: '#171f2a' },
-  webFallbackContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  webFallbackIcon: { fontSize: 48, marginBottom: 16 },
-  gameModeTitle: { color: '#ebd59b', fontSize: 18, fontWeight: 'bold', letterSpacing: 1, textAlign: 'center' },
-  gameModeSubtitle: { color: '#8a94a6', fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 20, maxWidth: 500 },
-  mapErrorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  mapErrorText: { color: '#8a94a6', fontSize: 14, textAlign: 'center', fontWeight: 'bold' },
-  bottomNavContainer: { backgroundColor: '#1d2631', borderWidth: 2, borderColor: '#a38450', borderRadius: 4, flexDirection: 'row', height: 80, alignItems: 'center', paddingHorizontal: 5, marginBottom: Platform.OS === 'ios' ? 15 : 0 },
-  navTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' },
-  activeNavTab: { backgroundColor: '#222d3a' },
-  navIcon: { fontSize: 20, marginBottom: 2 },
-  navText: { color: '#8a94a6', fontWeight: 'bold', fontSize: 12, letterSpacing: 0.5 },
-  activeNavText: { color: '#ebd59b' },
-  activeIndicator: { position: 'absolute', bottom: 4, left: '10%', right: '10%', height: 3, backgroundColor: '#ebd59b', borderRadius: 2 },
-  navDivider: { width: 2, height: '45%', backgroundColor: '#a38450', opacity: 0.4 }
-});
