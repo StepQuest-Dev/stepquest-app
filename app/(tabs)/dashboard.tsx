@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { useRouter, useNavigation } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
+import { useRouter, useNavigation, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import { Pedometer } from 'expo-sensors';
@@ -18,12 +18,11 @@ export default function DashboardScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- STANY DLA SYSTEMU DIAGNOSTYKI ---
+  // --- STANY DIAGNOSTYKI ---
   const [currentStatus, setCurrentStatus] = useState('Inicjalizacja świata gry...');
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
 
-  // Funkcja dodająca logi w tle (wyświetlą się podczas ładowania)
   const addLog = (msg: string) => {
     console.log(`[DASHBOARD] ${msg}`);
     setDebugLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -31,118 +30,126 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: { display: 'none' },
-      headerShown: false,
-    });
+    navigation.setOptions({ tabBarStyle: { display: 'none' }, headerShown: false });
   }, [navigation]);
 
-  // FUNKCJA SYNCHRONIZACJI KROKÓW Z SERWEREM NestJS
   const syncStepsWithServer = async (currentSteps: number) => {
     try {
       await api.post('/steps', { count: currentSteps });
-      addLog(`Sync kroków udany: ${currentSteps}`);
+      console.log(`✅ Zsynchronizowano z serwerem: ${currentSteps}`);
     } catch (err) {
-      console.error('Błąd synchronizacji kroków z serwerem:', err);
+      console.error('Błąd synchronizacji kroków:', err);
     }
   };
 
+  // --- RĘCZNA SYNCHRONIZACJA (Po kliknięciu w STEP COINS) ---
+  const handleManualSync = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Czy chcesz zsynchronizować swoje kroki z serwerem?')) {
+        syncStepsWithServer(steps);
+        alert('Kroki zostały zsynchronizowane!');
+      }
+    } else {
+      Alert.alert(
+        'Synchronizacja',
+        'Czy chcesz zsynchronizować swoje kroki z serwerem?',
+        [
+          { text: 'NIE', style: 'cancel' },
+          { 
+            text: 'TAK', 
+            onPress: () => {
+              syncStepsWithServer(steps);
+              // Opcjonalnie mały komunikat o sukcesie (możesz usunąć, jeśli wolisz po cichu)
+              Alert.alert('Sukces', 'Kroki zostały pomyślnie zapisane w bazie!');
+            }
+          }
+        ]
+      );
+    }
+  };
+  // -----------------------------------------------------------
+
+  // 1. ODŚWIEŻANIE W LOCIE (Gdy wracamy z panelu Deva na Mapę)
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const fetchLatestSteps = async () => {
+        try {
+          const res = await api.get('/steps/latest');
+          const serverSteps = res.data.steps || res.data.count || 0;
+          if (isActive) {
+            setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
+          }
+        } catch (e) {
+          console.warn("Błąd cichego odświeżania kroków", e);
+        }
+      };
+      fetchLatestSteps();
+      return () => { isActive = false; };
+    }, [])
+  );
+
+  // 2. GŁÓWNA INICJALIZACJA GRY I KROKOMIERZA
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
     let isMounted = true;
+    let watchAccumulator = 0;
 
     const fetchDashboardAndStartPedometer = async () => {
       try {
-        // 1. Pobieranie danych profilu
-        addLog(`Uderzam do NestJS pod URL: ${api.defaults.baseURL}/auth/me`);
+        addLog(`Pobieranie profilu...`);
         const userResponse = await api.get('/auth/me');
-        addLog("✅ Sukces: Dane profilu odebrane z backendu.");
         if (isMounted) setUsername(userResponse.data.username || userResponse.data.email);
 
-        // 2. Pobieranie GPS
-        addLog("Żądanie uprawnień do lokalizacji satelitarnej...");
+        addLog("Pobieram pozycję GPS...");
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
         if (gpsStatus === 'granted') {
-          addLog("✅ Uprawnienia GPS przyznane. Pobieram pozycję gracza...");
           let currentByGps = await Location.getCurrentPositionAsync({});
-          addLog("✅ Pozycja GPS pobrana pomyślnie.");
           if (isMounted) setLocation(currentByGps);
         } else {
-          addLog("⚠️ Odmowa uprawnień GPS.");
           setErrorMsg('Brak uprawnień do GPS.');
         }
 
-        // 3. OBSŁUGA KROKOMIERZA (PEDOMETER) - ZABEZPIECZONA PRZED CRASHEM ANDROIDA
         if (Platform.OS !== 'web') {
-          addLog("Sprawdzam dostępność czujników ruchu w telefonie...");
+          addLog("Uruchamiam sprzętowy Pedometer...");
           const isPedometerAvailable = await Pedometer.isAvailableAsync();
           
           if (isPedometerAvailable) {
-            // getStepCountAsync wywołujemy TYLKO na iOS
-            if (Platform.OS === 'ios') {
-              const now = new Date();
-              const startOfDay = new Date(now);
-              startOfDay.setHours(0, 0, 0, 0);
+            let currentServerSteps = 0;
+            try {
+              const res = await api.get('/steps/latest');
+              currentServerSteps = res.data.steps || res.data.count || 0;
+            } catch(e) {}
 
-              addLog("Pobieram zliczone dzisiaj kroki sprzętowe...");
-              const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
-              addLog(`✅ Czujnik zwrócił: ${stepCountResult.steps} kroków.`);
-              if (isMounted) {
-                setSteps(stepCountResult.steps);
-                syncStepsWithServer(stepCountResult.steps); 
-              }
-            } else {
-              // Na Androidzie pobieramy ostatni stan z bazy danych NestJS
-              try {
-                addLog("Pobieram ostatni stan kroków z serwera (Android)...");
-                const stepsResponse = await api.get('/steps/latest');
-                if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
-              } catch (e) {
-                addLog("⚠️ Brak poprzednich wpisów na serwerze. Start od 0.");
-                if (isMounted) setSteps(0);
-              }
-            }
+            if (isMounted) setSteps(currentServerSteps);
 
-            // Nasłuchiwanie kroków na żywo
             subscription = Pedometer.watchStepCount((result) => {
               if (isMounted) {
-                if (Platform.OS === 'ios') {
-                  setSteps(result.steps);
-                  syncStepsWithServer(result.steps);
-                } else {
-                  // Poprawne sumowanie kroków na żywo dla Androida
-                  setSteps((prevSteps) => {
-                    const updatedSteps = prevSteps + (result.steps ?? 0);
-                    syncStepsWithServer(updatedSteps);
-                    return updatedSteps;
+                const hardwareCounter = result.steps;
+                const delta = hardwareCounter - watchAccumulator;
+
+                if (delta > 0) {
+                  setSteps((prevTotal) => {
+                    const updatedTotal = prevTotal + delta;
+                    syncStepsWithServer(updatedTotal);
+                    return updatedTotal;
                   });
+                  watchAccumulator = hardwareCounter;
                 }
               }
             });
-          } else {
-            addLog("⚠️ Czujnik kroków (Pedometer) jest niedostępny.");
           }
         } else {
-          addLog("Uruchomiono na Web. Pobieram ostatnie dane kroków z bazy...");
           const stepsResponse = await api.get('/steps/latest');
           if (isMounted) setSteps(stepsResponse.data.steps || stepsResponse.data.count || 0);
         }
 
       } catch (error: any) {
-        addLog("❌ WYSTĄPIŁ BŁĄD PODCZAS ŁADOWANIA STRONY!");
-        console.error('❌ Błąd aplikacji:', error);
-
-        // Przechwytujemy detale błędu do konsoli GameDiagnostics
         let details = `Wiadomość: ${error.message}\n`;
-        if (error.response) {
-          details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
-        } else if (error.request) {
-          details += `Wysłano żądanie, brak jakiejkolwiek odpowiedzi sieciowej. Serwer NestJS prawdopodobnie nie działa lub zablokował go Firewall. IP komputera: ${api.defaults.baseURL}`;
-        }
+        if (error.response) details += `Kod HTTP: ${error.response.status}\nOdpowiedź: ${JSON.stringify(error.response.data)}`;
         if (isMounted) setNetworkErrorDetails(details);
 
         if (error.response?.status === 401) {
-          addLog("Sesja wygasła (401). Przekierowanie do logowania...");
           if (Platform.OS === 'web') {
             if (typeof window !== 'undefined') localStorage.removeItem('userToken');
           } else {
@@ -162,9 +169,8 @@ export default function DashboardScreen() {
       isMounted = false;
       if (subscription) subscription.remove();
     };
-  }, [networkErrorDetails]);
+  }, []);
 
-  // --- OTO NASZA DIAGNOSTYKA SIECIOWA ---
   if (loading) {
     return (
       <GameDiagnostics
@@ -176,7 +182,6 @@ export default function DashboardScreen() {
   }
 
   const renderMapArea = () => {
-    // Jeśli jeszcze nie mamy GPS, pokazujemy błąd/ładowanie
     if (!location) {
       return (
         <View style={styles.mapErrorContainer}>
@@ -187,7 +192,6 @@ export default function DashboardScreen() {
       );
     }
 
-    // Mroczny silnik Leaflet w WebView
     const mapHtml = `
       <!DOCTYPE html>
       <html>
@@ -229,6 +233,7 @@ export default function DashboardScreen() {
 
     if (Platform.OS !== 'web') {
       try {
+        const { WebView } = require('react-native-webview');
         return (
           <WebView
             originWhitelist={['*']}
@@ -279,13 +284,20 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.stepCoinsContainer}>
+        {/* --- KLIKALNY PANEL MONET (RĘCZNA SYNCHRONIZACJA) --- */}
+        <TouchableOpacity 
+          style={styles.stepCoinsContainer}
+          onPress={handleManualSync}
+          activeOpacity={0.7}
+        >
           <View style={styles.coinsRow}>
             <Text style={styles.coinIcon}>🪙</Text>
             <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
           </View>
           <Text style={styles.coinsLabel}>STEP COINS</Text>
-        </View>
+        </TouchableOpacity>
+        {/* ----------------------------------------------------- */}
+
       </View>
 
       {/* SEKCJA MAPY / OKNA GRY */}

@@ -39,7 +39,7 @@ export default function PlayerProfile() {
       } else {
         Alert.alert('🛠️ Panel Programisty', 'Uzyskano dostęp do narzędzi administracyjnych.');
       }
-      router.push('/(tabs)/developerPanel'); // Przejście do tajnego panelu
+      router.push('/(tabs)/developerPanel');
     }
   };
 
@@ -135,14 +135,14 @@ export default function PlayerProfile() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        {/* POPRAWKA BŁĘDU GO_BACK: Używamy sztywnego router.push zamiast .back() */}
+        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/dashboard')}>
           <FontAwesome5 name="arrow-left" size={16} color="#ebd59b" />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>PROFIL BOHATERA</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* TOUCHABLEOPACITY DODANE DO KARTY AVATARA */}
       <View style={styles.headerCard}>
         <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8} style={styles.avatarWrapper}>
           <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
@@ -185,7 +185,6 @@ export default function PlayerProfile() {
   );
 }
 
-// Zostawiamy Twoje style bez modyfikacji
 const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#12181f' },
   loadingText: { marginTop: 15, color: '#ebd59b', fontWeight: 'bold', fontSize: 16 },
