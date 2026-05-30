@@ -35,7 +35,8 @@ export const styles = StyleSheet.create({
         borderColor: '#d8b26e',
         borderRadius: 4,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        overflow: 'hidden' // Dodane
     },
     avatarText: { fontSize: 22 },
     profileInfo: { flex: 1, marginLeft: 10, justifyContent: 'center' },
@@ -47,7 +48,11 @@ export const styles = StyleSheet.create({
     expBarFill: { height: '100%', backgroundColor: '#717d8c' },
     stepCoinsContainer: { alignItems: 'flex-end', justifyContent: 'center', paddingLeft: 8 },
     coinsRow: { flexDirection: 'row', alignItems: 'center' },
-    coinIcon: { fontSize: 18, marginRight: 4 },
+    coinImage: {
+        width: 30,
+        height: 30,
+        marginRight: 6,
+    },
     coinsValue: { color: '#ebd59b', fontSize: 24, fontWeight: 'bold', textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 1 },
     coinsLabel: { color: '#ebd59b', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 },
 
@@ -117,4 +122,17 @@ export const styles = StyleSheet.create({
     gameModeSubtitle: { color: '#8a94a6', fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 20, maxWidth: 500 },
     mapErrorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#171f2a' },
     mapErrorText: { color: '#8a94a6', fontSize: 14, textAlign: 'center', fontWeight: 'bold' },
+
+    // Zaktualizuj ten styl (dodaj overflow: 'hidden', aby obrazek nie wystawał poza zaokrąglone rogi)
+
+    // --- Style Ikon ---
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+    },
+    navImage: {
+        width: '100%',
+        height: 30,
+    },
+
 });

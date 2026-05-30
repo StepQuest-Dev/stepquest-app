@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import GameDiagnostics from '../../components/GameDiagnostics';
 import api from '../../services/api';
@@ -161,6 +161,9 @@ export default function DashboardScreen() {
       );
     }
 
+    // 1. Rozwiąż ścieżkę do lokalnego obrazka, aby WebView mogło go odczytać
+    const userIconUri = Image.resolveAssetSource(require('@/assets/images/user-icon.png')).uri;
+
     const mapHtml = `
       <!DOCTYPE html>
       <html>
@@ -172,8 +175,14 @@ export default function DashboardScreen() {
               body { padding: 0; margin: 0; background-color: #12181f; }
               #map { width: 100%; height: 100vh; }
               .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
-                  /* Ustawia ciemny motyw dla mapy (opcjonalne, w razie czego można usunąć ten filtr) */
                   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+              }
+              /* 2. Stylizacja nowego znacznika gracza (Złota ramka, okrągły kształt) */
+              .custom-player-icon {
+                  border-radius: 25%;
+                  background-color: #2a3642;
+                  box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+                  object-fit: cover;
               }
           </style>
       </head>
@@ -186,18 +195,19 @@ export default function DashboardScreen() {
                   attribution: '© OpenStreetMap'
               }).addTo(map);
 
-              var cowboyIcon = L.divIcon({
-                  html: '<div style="font-size: 30px; text-shadow: 2px 2px 4px #000;">🤠</div>',
-                  className: 'custom-div-icon',
-                  iconSize: [30, 30],
-                  iconAnchor: [15, 15]
+              // 3. Używamy L.icon zamiast L.divIcon do wyświetlenia grafiki
+              var playerIcon = L.icon({
+                  iconUrl: '${userIconUri}', // Wstrzyknięty link do obrazka
+                  iconSize: [40, 40],        // Rozmiar obrazka [szerokość, wysokość]
+                  iconAnchor: [20, 20],      // Punkt zaczepienia (środek)
+                  popupAnchor: [0, -20],     // Gdzie ma pojawić się dymek (nad ikoną)
+                  className: 'custom-player-icon' // Dodaje klasę CSS zdefiniowaną wyżej
               });
 
-              L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: cowboyIcon})
+              L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: playerIcon})
                 .addTo(map)
                 .bindPopup('<b>Tutaj jesteś!</b><br>Eksploruj świat StepQuest.');
 
-              // Zdarzenie kliknięcia wysyłające wiadomość do React Native
               map.on('click', function() {
                   window.ReactNativeWebView.postMessage('toggle_nav');
               });
@@ -243,14 +253,18 @@ export default function DashboardScreen() {
         {/* Główny pasek profilu */}
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.avatarPlaceholder} onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.7}>
-            <Text style={styles.avatarText}>🤠</Text>
+            {/* Zastąpiony tekst komponentem Image */}
+            <Image
+              source={require('@/assets/images/user-icon.png')}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
-
           <View style={styles.profileInfo}>
             <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
             <View style={styles.levelRow}>
               <Text style={styles.levelText}>Lv. 15</Text>
-              <Text style={styles.expLabel}>EX</Text>
+              <Text style={styles.expLabel}>EXP</Text>
               <View style={styles.expBarBg}>
                 <View style={[styles.expBarFill, { width: '35%' }]} />
               </View>
@@ -259,7 +273,11 @@ export default function DashboardScreen() {
 
           <TouchableOpacity style={styles.stepCoinsContainer} onPress={handleManualSync} activeOpacity={0.7}>
             <View style={styles.coinsRow}>
-              <Text style={styles.coinIcon}>🪙</Text>
+              <Image
+                source={require('@/assets/images/coins.png')} // Podmień na plik swojej monety
+                style={styles.coinImage}
+                resizeMode="contain"
+              />
               <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
             </View>
             <Text style={styles.coinsLabel}>STEP COINS</Text>
@@ -285,7 +303,11 @@ export default function DashboardScreen() {
       {isNavVisible && (
         <View style={styles.bottomNavContainer}>
           <TouchableOpacity style={[styles.navTab, styles.activeNavTab]}>
-            <Text style={styles.navIcon}>🧭</Text>
+            <Image
+              source={require('@/assets/images/mapa.png')} // Zmień nazwę pliku na swoją
+              style={styles.navImage}
+              resizeMode="contain"
+            />
             <Text style={[styles.navText, styles.activeNavText]}>MAPA</Text>
             <View style={styles.activeIndicator} />
           </TouchableOpacity>
@@ -293,14 +315,22 @@ export default function DashboardScreen() {
           <View style={styles.navDivider} />
 
           <TouchableOpacity style={styles.navTab} onPress={() => alert('Sklep wkrótce!')}>
-            <Text style={styles.navIcon}>💰</Text>
+            <Image
+              source={require('@/assets/images/money.png')} // Zmień nazwę pliku na swoją
+              style={styles.navImage}
+              resizeMode="contain"
+            />
             <Text style={styles.navText}>SKLEP</Text>
           </TouchableOpacity>
 
           <View style={styles.navDivider} />
 
           <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkrótce!')}>
-            <Text style={styles.navIcon}>🏡</Text>
+            <Image
+              source={require('@/assets/images/osada.png')} // Zmień nazwę pliku na swoją
+              style={styles.navImage}
+              resizeMode="contain"
+            />
             <Text style={styles.navText}>OSADA</Text>
           </TouchableOpacity>
         </View>
