@@ -19,35 +19,36 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     return null;
   }
 
-  return (
-    <View style={styles.bottomNavContainer}>
-      {/* ZAKŁADKA: MAPA */}
-      <TouchableOpacity 
-        style={[styles.navTab, currentRoute.name === 'dashboard' ? styles.activeNavTab : null]} 
-        onPress={() => navigation.navigate('dashboard')}
-      >
-        <Text style={styles.navIcon}>🧭</Text>
-        <Text style={[styles.navText, currentRoute.name === 'dashboard' ? styles.activeNavText : null]}>MAPA</Text>
-        {currentRoute.name === 'dashboard' && <View style={styles.activeIndicator} />}
-      </TouchableOpacity>
+  // return (
+   
+  //  <View style={styles.bottomNavContainer}>
+  //     {/* ZAKŁADKA: MAPA */}
+  //     <TouchableOpacity 
+  //       style={[styles.navTab, currentRoute.name === 'dashboard' ? styles.activeNavTab : null]} 
+  //       onPress={() => navigation.navigate('dashboard')}
+  //     >
+  //       <Text style={styles.navIcon}>🧭</Text>
+  //       <Text style={[styles.navText, currentRoute.name === 'dashboard' ? styles.activeNavText : null]}>MAPA</Text>
+  //       {currentRoute.name === 'dashboard' && <View style={styles.activeIndicator} />}
+  //     </TouchableOpacity>
 
-      <View style={styles.navDivider} />
+  //     <View style={styles.navDivider} />
 
-      {/* ZAKŁADKA: SKLEP */}
-      <TouchableOpacity style={styles.navTab} onPress={() => alert('Sklep wkrótce!')}>
-        <Text style={styles.navIcon}>💰</Text>
-        <Text style={styles.navText}>SKLEP</Text>
-      </TouchableOpacity>
+  //     {/* ZAKŁADKA: SKLEP */}
+  //     <TouchableOpacity style={styles.navTab} onPress={() => alert('Sklep wkrótce!')}>
+  //       <Text style={styles.navIcon}>💰</Text>
+  //       <Text style={styles.navText}>SKLEP</Text>
+  //     </TouchableOpacity>
 
-      <View style={styles.navDivider} />
+  //     <View style={styles.navDivider} />
 
-      {/* ZAKŁADKA: OSADA */}
-      <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkrótce!')}>
-        <Text style={styles.navIcon}>🏡</Text>
-        <Text style={styles.navText}>OSADA</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  //     {/* ZAKŁADKA: OSADA */}
+  //     <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkrótce!')}>
+  //       <Text style={styles.navIcon}>🏡</Text>
+  //       <Text style={styles.navText}>OSADA</Text>
+  //     </TouchableOpacity>
+  //   </View>
+  // );
 }
 
 export default function TabsLayout() {

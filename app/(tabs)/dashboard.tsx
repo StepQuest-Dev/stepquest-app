@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Text, TouchableOpacity, View, Modal } from 'react-native';
+import { Alert, Image, Platform, Text, TouchableOpacity, View, Modal } from 'react-native';
 import { WebView } from 'react-native-webview';
 import GameDiagnostics from '../../components/GameDiagnostics';
 import api from '../../services/api';
@@ -18,6 +18,8 @@ export default function DashboardScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  
+
   // --- STAN UKRYWANIA PASKA ---
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [syncModalVisible, setSyncModalVisible] = useState(false);
@@ -29,6 +31,12 @@ export default function DashboardScreen() {
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
 
   // Zmiana opcji nawigacji ZAWSZE, gdy zmieni się stan isNavVisible (kliknięcie w mapę)
+
+ useEffect(() => {
+    navigation.setOptions({ tabBarStyle: { display: 'none' }, headerShown: false });
+  }, [navigation]);
+
+
   useEffect(() => {
     navigation.setOptions({ 
       tabBarStyle: { display: isNavVisible ? 'flex' : 'none' }, 
@@ -181,8 +189,11 @@ export default function DashboardScreen() {
       );
     }
 
+    // 1. Rozwiąż ścieżkę do lokalnego obrazka, aby WebView mogło go odczytać
+    const userIconUri = Image.resolveAssetSource(require('@/assets/images/user-icon.png')).uri;
+
     const mapHtml = `
-      <!DOCTYPE html>
+       <!DOCTYPE html>
       <html>
       <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -194,6 +205,13 @@ export default function DashboardScreen() {
               .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
                   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
               }
+              /* 2. Stylizacja nowego znacznika gracza (Zlota ramka, okragly ksztalt) */
+              .custom-player-icon {
+                  border-radius: 25%;
+                  background-color: #2a3642;
+                  box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+                  object-fit: cover;
+              }
           </style>
       </head>
       <body>
@@ -202,19 +220,21 @@ export default function DashboardScreen() {
               var map = L.map('map', { zoomControl: false }).setView([${location.coords.latitude}, ${location.coords.longitude}], 16);
               L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                   maxZoom: 19,
-                  attribution: '© OpenStreetMap'
+                  attribution: '漏 OpenStreetMap'
               }).addTo(map);
 
-              var cowboyIcon = L.divIcon({
-                  html: '<div style="font-size: 30px; text-shadow: 2px 2px 4px #000;">🤠</div>',
-                  className: 'custom-div-icon',
-                  iconSize: [30, 30],
-                  iconAnchor: [15, 15]
+              // 3. U偶ywamy L.icon zamiast L.divIcon do wy艣wietlenia grafiki
+              var playerIcon = L.icon({
+                  iconUrl: '${userIconUri}', // Wstrzykni臋ty link do obrazka
+                  iconSize: [40, 40],        // Rozmiar obrazka [szeroko艣膰, wysoko艣膰]
+                  iconAnchor: [20, 20],      // Punkt zaczepienia (艣rodek)
+                  popupAnchor: [0, -20],     // Gdzie ma pojawi膰 si臋 dymek (nad ikon膮)
+                  className: 'custom-player-icon' // Dodaje klas臋 CSS zdefiniowan膮 wy偶ej
               });
 
-              L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: cowboyIcon})
+              L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon: playerIcon})
                 .addTo(map)
-                .bindPopup('<b>Tutaj jesteś!</b><br>Eksploruj świat StepQuest.');
+                .bindPopup('<b>Tutaj jesteś!</b><br>Eksploruj Świat StepQuest.');
 
               map.on('click', function() {
                   window.ReactNativeWebView.postMessage('toggle_nav');
@@ -294,14 +314,18 @@ export default function DashboardScreen() {
       <View style={styles.topOverlay} pointerEvents="box-none">
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.avatarPlaceholder} onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.7}>
-            <Text style={styles.avatarText}>🤠</Text>
+            {/* Zastąpiony tekst komponentem Image */}
+            <Image
+              source={require('@/assets/images/user-icon.png')}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
-
           <View style={styles.profileInfo}>
             <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
             <View style={styles.levelRow}>
               <Text style={styles.levelText}>Lv. 15</Text>
-              <Text style={styles.expLabel}>EX</Text>
+              <Text style={styles.expLabel}>EXP</Text>
               <View style={styles.expBarBg}>
                 <View style={[styles.expBarFill, { width: '35%' }]} />
               </View>
@@ -310,13 +334,54 @@ export default function DashboardScreen() {
 
           <TouchableOpacity style={styles.stepCoinsContainer} onPress={() => setSyncModalVisible(true)} activeOpacity={0.7}>
             <View style={styles.coinsRow}>
-              <Text style={styles.coinIcon}>🪙</Text>
+              <Image
+                source={require('@/assets/images/coins.png')} // Podmień na plik swojej monety
+                style={styles.coinImage}
+                resizeMode="contain"
+              />
               <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
             </View>
             <Text style={styles.coinsLabel}>STEP COINS</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* 3. DOLNA NAKŁADKA (NAWIGACJA - UKRYWANA PRZY KLIKNIĘCIU W MAPĘ) */}
+            {isNavVisible && (
+        <View style={styles.bottomNavContainer}>
+          <TouchableOpacity style={[styles.navTab, styles.activeNavTab]}>
+            <Image
+              source={require('@/assets/images/mapa.png')} // Zmie艅 nazw臋 pliku na swoj膮
+              style={styles.navImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.navText, styles.activeNavText]}>MAPA</Text>
+            <View style={styles.activeIndicator} />
+          </TouchableOpacity>
+
+           <View style={styles.navDivider} />
+
+          <TouchableOpacity style={styles.navTab} onPress={() => alert('Sklep wkr贸tce!')}>
+            <Image
+              source={require('@/assets/images/money.png')} // Zmie艅 nazw臋 pliku na swoj膮
+              style={styles.navImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.navText}>SKLEP</Text>
+          </TouchableOpacity>
+
+          <View style={styles.navDivider} />
+
+          <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkr贸tce!')}>
+            <Image
+              source={require('@/assets/images/osada.png')} // Zmie艅 nazw臋 pliku na swoj膮
+              style={styles.navImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.navText}>OSADA</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
     </View>
   );
