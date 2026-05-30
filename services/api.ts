@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
   //? 'http://localhost:3000/api/v1'
   //: `http://${process.env.EXPO_PUBLIC_LOCAL_IP}:3000/api/v1`; // Upewnij się, że EXPO_PUBLIC_LOCAL_IP jest ustawione na adres IP twojego komputera w sieci lokalnej 192.168.x.x w pliku .env
 
-//Zalecenia mistrza fronenda aby dzialalo
+//Zalecenia mistrza fronenda aby dzialalo (włączając LTE)
 // 1. instalujesz ngroka npx install ngrok
 // 2. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
 // 3. kopiujesz kurwa ten urla z cloudflare'a i wklejasz na API_URL poniżej
