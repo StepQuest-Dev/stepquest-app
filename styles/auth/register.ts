@@ -67,5 +67,20 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 10,
     textDecorationLine: 'underline'
-  }
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d1117',
+    borderWidth: 1,
+    borderColor: '#a38450',
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  eyeIcon: {
+    padding: 10,
+    paddingRight: 15,
+  },
+
+
 });

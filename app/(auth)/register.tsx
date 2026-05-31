@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import StyledTextInput from '../../components/StyledTextInput';
 import api from '../../services/api';
 import { styles } from '../../styles/auth/register';
@@ -11,9 +12,11 @@ export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Widoczność hasła
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const handleRegister = async () => {
-    // Log sprawdzający czy kliknięcie w ogóle działa w przeglądarce
     console.log('🚀 Kliknięto zarejestruj! Dane:', { email, username, password });
 
     if (!email || !username || !password) {
@@ -40,7 +43,6 @@ export default function RegisterScreen() {
       }
 
     } catch (error: any) {
-      // Wyciągamy dokładny błąd z serwera lub sieci
       console.error('❌ Błąd Axiosa podczas rejestracji:', error);
       if (error.response) {
         console.error('Dane błędu z serwera:', error.response.data);
@@ -62,7 +64,7 @@ export default function RegisterScreen() {
       {/* Kontener wyśrodkowujący logo StepQuest */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('@/assets/images/logo.png')} // Korzysta z działającego aliasu @/
+          source={require('@/assets/images/logo.png')} 
           style={styles.logo}
           resizeMode="contain"
         />
@@ -88,13 +90,28 @@ export default function RegisterScreen() {
         autoCapitalize="none"
       />
 
-      <StyledTextInput
-        style={styles.input}
-        placeholder="Hasło"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      {/* --- HASŁO Z "OCZKIEM" (NAPRAWIONY WYGLĄD) --- */}
+      {/* Kontener otrzymuje style inputu (kolor, ramka), ale bez wewnętrznych marginesów */}
+      <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', padding: 0, paddingHorizontal: 0, paddingVertical: 0 }]}>
+        <StyledTextInput
+          // Sam tekst jest przezroczysty i nie ma swoich ramek, żeby wtopić się w kontener
+          style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]}
+          placeholder="Hasło"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!isPasswordVisible}
+        />
+        <TouchableOpacity 
+          style={{ paddingHorizontal: 15 }} 
+          onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+        >
+          <FontAwesome5 
+            name={isPasswordVisible ? "eye-slash" : "eye"} 
+            size={20} 
+            color="#ebd59b" 
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* Uniwersalny przycisk działający na Web i Mobile */}
       <TouchableOpacity
