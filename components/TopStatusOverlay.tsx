@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, usePathname } from 'expo-router';
 import api from '../services/api';
 import { styles as dashboardStyles } from '../styles/tabs/Dashboard';
 
@@ -11,6 +11,7 @@ interface TopStatusOverlayProps {
 
 export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopStatusOverlayProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [username, setUsername] = useState('');
   const [character, setCharacter] = useState<any>(null);
   const [serverSteps, setServerSteps] = useState(0);
@@ -53,7 +54,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
       <View style={dashboardStyles.profileHeader}>
         <TouchableOpacity 
           style={dashboardStyles.avatarPlaceholder} 
-          onPress={() => router.push('/(tabs)/profile')} 
+          onPress={() => router.push({ pathname: '/(tabs)/profile', params: { from: pathname } })} 
           activeOpacity={0.7}
         >
           <Image source={require('@/assets/images/user-icon.png')} style={dashboardStyles.avatarImage} resizeMode="cover" />
@@ -72,7 +73,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
               <View 
                 style={[
                   dashboardStyles.expBarFill, 
-                  { width: `${Math.min((character?.exp || 0) * 10, 100)}%` }
+                  { width: `${Math.min(character?.exp || 0, 100)}%` }
                 ]} 
               />
             </View>
@@ -86,7 +87,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
           disabled={!onSyncPress}
         >
           <View style={dashboardStyles.coinsRow}>
-            <Image source={require('@/assets/images/coins.png')} style={{ width: 20, height: 20, marginRight: 5 }} resizeMode="contain" />
+            <Image source={require('@/assets/images/coins.png')} style={{ width: 25, height: 25, marginRight: 5 }} resizeMode="contain" />
             <Text style={[dashboardStyles.coinsValue, { fontFamily: 'determination' }]}>
               {displaySteps.toLocaleString()}
             </Text>

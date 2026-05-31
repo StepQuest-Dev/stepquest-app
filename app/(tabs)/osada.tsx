@@ -134,7 +134,12 @@ export default function OsadaScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ImageBackground 
+      source={require('@/assets/images/osada_bg.png')} 
+      style={styles.container}
+      imageStyle={styles.bgImage}
+      resizeMode="cover"
+    >
       <CustomAlert 
         visible={alertVisible}
         title={alertConfig.title}
@@ -146,11 +151,7 @@ export default function OsadaScreen() {
       <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
 
       {/* --- SCENA MIASTA (TOWN VIEW) --- */}
-      <ImageBackground 
-        source={require('@/assets/images/osada_bg.png')} 
-        style={styles.townView}
-        resizeMode="cover"
-      >
+      <View style={styles.townView}>
         {/* Elder's Hut (Top Left) */}
         <TouchableOpacity style={[styles.building, styles.hut]} onPress={() => setActiveNpc('elder')}>
           <View style={styles.bubbleWrapper}>
@@ -183,11 +184,11 @@ export default function OsadaScreen() {
             <View style={[styles.bubblePointer, { borderTopColor: '#3498db' }]} />
           </View>
         </TouchableOpacity>
-      </ImageBackground>
+      </View>
 
       {renderNpcModal()}
       <BottomNavBar />
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -195,6 +196,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0d1117',
+  },
+  bgImage: {
+    width: '100%',
+    height: '100%',
   },
   townView: {
     flex: 1,
