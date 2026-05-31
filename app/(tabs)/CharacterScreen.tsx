@@ -6,6 +6,19 @@ import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
 import { charStyles as styles } from '../../styles/tabs/CharacterScreens';
 
+// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
+const getCharacterAvatar = (className?: string) => {
+  if (!className) return require('@/assets/images/user-icon.png');
+  switch (className.toLowerCase()) {
+    case 'wojownik': return require('@/assets/images/warrior-icon.png');
+    case 'mnich': return require('@/assets/images/mnich-icon.png');
+    case 'czarnoksiężnik':
+    case 'mag': return require('@/assets/images/mag-icon.png');
+    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    default: return require('@/assets/images/user-icon.png');
+  }
+};
+
 export default function CharacterScreen() {
   const router = useRouter();
   const [character, setCharacter] = useState<any>(null);
@@ -83,7 +96,9 @@ export default function CharacterScreen() {
 
       {character && (
         <View style={styles.detailsCard}>
-          <Image source={require('@/assets/images/user-icon.png')} style={styles.bigAvatar} />
+          {/* --- POPRAWKA: Pobieramy awatar na podstawie klasy --- */}
+          <Image source={getCharacterAvatar(character?.class?.name)} style={styles.bigAvatar} />
+          
           <Text style={styles.charName}>{character.name.toUpperCase()}</Text>
           <Text style={styles.charLevel}>Poziom {character.level} • Złoto: {character.gold}</Text>
 
