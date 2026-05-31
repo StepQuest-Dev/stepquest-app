@@ -1,30 +1,47 @@
+import { useFonts } from 'expo-font';
+import * as NavigationBar from 'expo-navigation-bar';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { Stack } from 'expo-router';
-import * as NavigationBar from 'expo-navigation-bar';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
- useEffect(() => {
-  if (Platform.OS === 'android') {
-    // Definiujemy wewnętrzną funkcję asynchroniczną
-    const configureAndroidBar = async () => {
-      try {
-        // Dodajemy "Async" na końcu obu metod
-        await NavigationBar.setVisibilityAsync('hidden');
-        await NavigationBar.setBehaviorAsync('overlay-swipe');
-      } catch (error) {
-        console.warn('Nie udało się skonfigurować paska nawigacji:', error);
-      }
-    };
+  const [fontsLoaded, fontError] = useFonts({
+    'Minecraftia': require('../assets/fonts/Minecraftia-Regular.ttf'),
+    'determination': require('../assets/fonts/determination.ttf'),
+    'loveyalikeasister': require('../assets/fonts/LoveYaLikeASister-Regular.ttf'),
+  });
 
-    configureAndroidBar();
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const configureAndroidBar = async () => {
+        try {
+          await NavigationBar.setVisibilityAsync('hidden');
+          await NavigationBar.setBehaviorAsync('overlay-swipe');
+        } catch (error) {
+          console.warn('Nie udało się skonfigurować paska nawigacji:', error);
+        }
+      };
+      configureAndroidBar();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
   }
-}, []);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" /> 
+      <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );

@@ -9,7 +9,7 @@ export const layoutStyles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 95 : 80,
     alignItems: 'center',
     paddingHorizontal: 5,
-    paddingBottom: Platform.OS === 'ios' ? 15 : 0, 
+    paddingBottom: Platform.OS === 'ios' ? 15 : 0,
   },
   navTab: {
     flex: 1,
@@ -22,16 +22,19 @@ export const layoutStyles = StyleSheet.create({
     backgroundColor: '#222d3a',
   },
   navIcon: {
+    fontFamily: 'determination',
     fontSize: 20,
     marginBottom: 2,
   },
   navText: {
+    fontFamily: 'determination',
     color: '#8a94a6',
     fontWeight: 'bold',
     fontSize: 12,
     letterSpacing: 0.5,
   },
   activeNavText: {
+    fontFamily: 'determination',
     color: '#ebd59b',
   },
   activeIndicator: {

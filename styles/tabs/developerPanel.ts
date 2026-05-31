@@ -7,6 +7,7 @@ export const styles = StyleSheet.create({
         padding: 12
     },
     topBar: {
+
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -25,8 +26,8 @@ export const styles = StyleSheet.create({
         alignItems: 'center'
     },
     topBarTitle: {
+        fontFamily: 'loveyalikeasister',
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 16,
         letterSpacing: 1
     },
@@ -39,13 +40,14 @@ export const styles = StyleSheet.create({
         marginBottom: 15
     },
     infoTitle: {
+        fontFamily: 'loveyalikeasister',
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 13,
         marginBottom: 6,
         letterSpacing: 0.5
     },
     infoText: {
+        fontFamily: 'loveyalikeasister',
         color: '#8a94a6',
         fontSize: 12,
         marginTop: 2
@@ -71,12 +73,13 @@ export const styles = StyleSheet.create({
     },
     sectionTitle: {
         color: '#ebd59b',
-        fontWeight: 'bold',
+        fontFamily: 'loveyalikeasister',
         fontSize: 13,
         letterSpacing: 0.5
     },
     sectionSubtitle: {
         color: '#8a94a6',
+        fontFamily: 'loveyalikeasister',
         fontSize: 12,
         lineHeight: 18,
         marginBottom: 15
@@ -100,8 +103,8 @@ export const styles = StyleSheet.create({
         borderColor: '#ebd59b'
     },
     buttonText: {
+        fontFamily: 'loveyalikeasister',
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 13,
         letterSpacing: 0.5
     },
@@ -115,7 +118,7 @@ export const styles = StyleSheet.create({
     },
     consoleTitle: {
         color: '#8a94a6',
-        fontWeight: 'bold',
+        fontFamily: 'loveyalikeasister',
         fontSize: 12,
         marginBottom: 8,
         letterSpacing: 0.5

@@ -8,15 +8,15 @@ export const styles = StyleSheet.create({
         backgroundColor: '#12181f'
     },
     loadingText: {
+        fontFamily: 'determination',
         marginTop: 15,
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 16
     },
     errorText: {
+        fontFamily: 'determination',
         color: '#e74c3c',
         fontSize: 16,
-        fontWeight: 'bold'
     },
     container: {
         flex: 1,
@@ -42,10 +42,11 @@ export const styles = StyleSheet.create({
         alignItems: 'center'
     },
     topBarTitle: {
+        fontFamily: 'determination',
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 18,
-        letterSpacing: 1
+        letterSpacing: 1,
+        marginLeft: 8
     },
     headerCard: {
         flexDirection: 'row',
@@ -84,12 +85,13 @@ export const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     username: {
+        fontFamily: 'determination',
         color: '#ebd59b',
-        fontWeight: 'bold',
         fontSize: 15,
         letterSpacing: 0.5
     },
     email: {
+        fontFamily: 'determination',
         fontSize: 12,
         color: '#8a94a6',
         marginTop: 1,
@@ -101,15 +103,15 @@ export const styles = StyleSheet.create({
         marginTop: 2
     },
     levelText: {
+        fontFamily: 'determination',
         color: '#fff',
-        fontWeight: 'bold',
         fontSize: 14,
         marginRight: 6
     },
     expLabel: {
+        fontFamily: 'determination',
         color: '#8a94a6',
         fontSize: 10,
-        fontWeight: 'bold',
         marginRight: 4
     },
     expBarBg: {
@@ -138,9 +140,9 @@ export const styles = StyleSheet.create({
         marginLeft: 'auto'
     },
     logoutText: {
+        fontFamily: 'determination',
         color: '#e74c3c',
         fontSize: 12,
-        fontWeight: 'bold',
         marginLeft: 6
     },
     listContainer: {
@@ -153,8 +155,8 @@ export const styles = StyleSheet.create({
         marginVertical: 5
     },
     sectionTitle: {
+        fontFamily: 'determination',
         fontSize: 15,
-        fontWeight: 'bold',
         color: '#ebd59b',
         marginBottom: 15,
         letterSpacing: 0.5
@@ -178,13 +180,13 @@ export const styles = StyleSheet.create({
     },
     characterName: {
         fontSize: 15,
-        fontWeight: 'bold',
+        fontFamily: 'determination',
         color: '#ebd59b'
     },
     characterClass: {
         fontSize: 11,
         color: '#8a94a6',
-        fontWeight: 'bold',
+        fontFamily: 'determination',
         letterSpacing: 0.5,
         marginTop: 2
     },
@@ -198,7 +200,7 @@ export const styles = StyleSheet.create({
     },
     characterLevelText: {
         color: '#ebd59b',
-        fontWeight: 'bold',
+        fontFamily: 'determination',
         fontSize: 12
     },
     emptyText: {

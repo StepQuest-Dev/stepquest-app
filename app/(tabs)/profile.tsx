@@ -1,11 +1,11 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router'; // Dodałem useFocusEffect
+import { useFocusEffect, useRouter } from 'expo-router'; // Dodałem useFocusEffect
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useState } from 'react'; // Dodałem useCallback
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Profile';
-import CustomAlert from '../../components/CustomAlerts';
 
 // --- INTERFEJSY ---
 interface Character {
@@ -44,7 +44,7 @@ interface UserProfile {
 
 export default function PlayerProfile() {
   const router = useRouter();
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
   const [history, setHistory] = useState<BattleHistory[]>([]);
@@ -54,11 +54,11 @@ export default function PlayerProfile() {
   const [avatarClicks, setAvatarClicks] = useState(0);
 
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ 
-    title: '', 
-    message: '', 
-    isSuccess: true, 
-    onConfirm: undefined as (() => void) | undefined 
+  const [alertConfig, setAlertConfig] = useState({
+    title: '',
+    message: '',
+    isSuccess: true,
+    onConfirm: undefined as (() => void) | undefined
   });
 
   const handleAvatarPress = () => {
@@ -172,7 +172,7 @@ export default function PlayerProfile() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <CustomAlert 
+      <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
@@ -217,15 +217,15 @@ export default function PlayerProfile() {
               <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
                   <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
-                  <Text style={[styles.levelText, { color: '#ebd59b', fontWeight: 'bold' }]}>Lv. {character.level}</Text>
+                  <Text style={[styles.levelText, { color: '#ebd59b' }]}>Lv. {character.level}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={{ color: '#e74c3c', fontWeight: 'bold' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
-                  <Text style={{ color: '#f1c40f', fontWeight: 'bold' }}>💰 Złoto: {character.gold}</Text>
+                  <Text style={{ color: '#e74c3c', fontFamily: 'determination', }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
+                  <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: '#8a94a6', fontWeight: 'bold' }}>⚔️ Atak: {character.attack}</Text>
-                  <Text style={{ color: '#8a94a6', fontWeight: 'bold' }}>🛡️ Obrona: {character.defense}</Text>
+                  <Text style={{ color: '#8a94a6', fontFamily: 'determination', }}>⚔️ Atak: {character.attack}</Text>
+                  <Text style={{ color: '#8a94a6', fontFamily: 'determination', }}>🛡️ Obrona: {character.defense}</Text>
                 </View>
               </View>
             ) : (
@@ -234,17 +234,17 @@ export default function PlayerProfile() {
             <Text style={[styles.sectionTitle, { marginTop: 10 }]}>📜 HISTORIA WALK</Text>
             {combatStats && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 15, backgroundColor: '#2a3642', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#a38450' }}>
-                <Text style={{ color: '#ebd59b', fontWeight: 'bold' }}>Wszystkie: {combatStats.total}</Text>
-                <Text style={{ color: '#2ecc71', fontWeight: 'bold' }}>Wygrane: {combatStats.won}</Text>
-                <Text style={{ color: '#e74c3c', fontWeight: 'bold' }}>Przegrane: {combatStats.lost}</Text>
+                <Text style={{ color: '#ebd59b', fontFamily: 'determination', }}>Wszystkie: {combatStats.total}</Text>
+                <Text style={{ color: '#2ecc71', fontFamily: 'determination', }}>Wygrane: {combatStats.won}</Text>
+                <Text style={{ color: '#e74c3c', fontFamily: 'determination', }}>Przegrane: {combatStats.lost}</Text>
               </View>
             )}
           </>
         }
         ListFooterComponent={
           history.length > 5 ? (
-            <TouchableOpacity 
-              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }} 
+            <TouchableOpacity
+              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }}
               onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
             >
               <Text style={{ color: '#ebd59b', fontWeight: 'bold', fontSize: 16 }}>

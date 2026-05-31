@@ -16,8 +16,8 @@ export const styles = StyleSheet.create({
         height: 160,
     },
     header: {
+        fontFamily: 'determination',
         fontSize: 34,
-        fontWeight: 'bold',
         textAlign: 'center',
         marginBottom: 35,
         color: '#ebd59b',
@@ -27,6 +27,7 @@ export const styles = StyleSheet.create({
         textShadowRadius: 1
     },
     input: {
+        fontFamily: 'determination',
         backgroundColor: '#212933',
         padding: 15,
         borderRadius: 4,
@@ -50,7 +51,9 @@ export const styles = StyleSheet.create({
         backgroundColor: '#1a2026',
         borderColor: '#555'
     },
+
     buttonText: {
+        fontFamily: 'determination',
         color: '#ebd59b',
         fontWeight: 'bold',
         fontSize: 18,
@@ -60,6 +63,7 @@ export const styles = StyleSheet.create({
         textShadowRadius: 1
     },
     linkText: {
+        fontFamily: 'determination',
         textAlign: 'center',
         color: '#a38450',
         fontWeight: 'bold',

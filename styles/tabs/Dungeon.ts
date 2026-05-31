@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#12181f', 
+  container: {
+    flex: 1,
+    backgroundColor: '#12181f',
     paddingTop: 50,
     paddingHorizontal: 20,
   },
@@ -15,20 +15,21 @@ export const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginBottom: 10,
-    tintColor: '#e74c3c' 
+    tintColor: '#e74c3c'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#e74c3c', 
-    marginBottom: 5, 
-    textShadowColor: '#000', 
-    textShadowOffset: { width: 2, height: 2 }, 
-    textShadowRadius: 2 
+  title: {
+    fontFamily: 'determination',
+    fontSize: 28,
+    color: '#e74c3c',
+    marginBottom: 5,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 2
   },
-  subtitle: { 
-    color: '#8a94a6', 
-    fontSize: 14, 
+  subtitle: {
+    color: '#8a94a6',
+    fontSize: 14,
+    fontFamily: 'determination',
     textAlign: 'center'
   },
   listContainer: {
@@ -55,15 +56,15 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   monsterName: {
+    fontFamily: 'determination',
     color: '#ebd59b',
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 4,
   },
   monsterStats: {
+    fontFamily: 'determination',
     color: '#e74c3c',
     fontSize: 14,
-    fontWeight: 'bold',
   },
   attackButton: {
     backgroundColor: '#8b0000',
@@ -75,7 +76,7 @@ export const styles = StyleSheet.create({
   },
   attackButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontFamily: 'determination',
     fontSize: 14,
     letterSpacing: 1,
   }
