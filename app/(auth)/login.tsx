@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Text, TouchableOpacity, View, TextInput } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons'; // Upewnij się, że masz to zainstalowane
+import { ActivityIndicator, Alert, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import StyledTextInput from '../../components/StyledTextInput';
 import api from '../../services/api';
 import { styles } from '../../styles/auth/login';
@@ -14,10 +14,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // NOWY STAN: Widoczność hasła
+  // Widoczność hasła
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // --- DIAGNOSTYKA ---
+  // Diagnostyka
   const [currentStatus, setCurrentStatus] = useState('Inicjalizacja autoryzacji...');
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
@@ -28,7 +28,12 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    // ... (kod bez zmian do momentu try/catch)
+    if (!email || !password) {
+      const msg = 'Wprowadź email i hasło.';
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('Błąd', msg);
+      return;
+    }
+
     setLoading(true);
     try {
       addLog(`Nawiązywanie połączenia z: ${api.defaults.baseURL}/auth/login`);
@@ -42,20 +47,55 @@ export default function LoginScreen() {
       router.replace('/(tabs)/dashboard');
     } catch (error: any) {
       addLog('❌ BŁĄD LOGOWANIA');
-      setNetworkErrorDetails(error.message);
+      let details = error.message;
+      if (error.response) {
+         details = Array.isArray(error.response.data.message) 
+           ? error.response.data.message.join('\n') 
+           : error.response.data.message || error.message;
+      }
+      setNetworkErrorDetails(details);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || networkErrorDetails) {
-    return <GameDiagnostics currentStatus={currentStatus} debugLogs={debugLogs} networkErrorDetails={networkErrorDetails} />;
+  if (networkErrorDetails && !loading) {
+     // Pozwól graczowi zobaczyć błąd i wrócić do formularza
+     return (
+       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: '#e74c3c', fontSize: 18, marginBottom: 20, textAlign: 'center' }}>
+            Błąd logowania: {networkErrorDetails}
+          </Text>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => { setNetworkErrorDetails(null); setCurrentStatus('Gotowy.'); }}
+          >
+            <Text style={styles.buttonText}>SPRÓBUJ PONOWNIE</Text>
+          </TouchableOpacity>
+       </View>
+     );
+  }
+
+  if (loading) {
+    return <GameDiagnostics currentStatus={currentStatus} debugLogs={debugLogs} networkErrorDetails={null} />;
   }
 
   return (
     <View style={styles.container}>
-      {/* ... logo i header ... */}
       
+      {/* SEKCJA LOGO */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      {/* NAGŁÓWEK */}
+      <Text style={styles.header}>STEPQUEST</Text>
+      
+      {/* E-MAIL */}
       <StyledTextInput
         style={styles.input}
         placeholder="E-mail"
@@ -86,9 +126,23 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+      {/* PRZYCISK LOGOWANIA */}
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]} 
+        onPress={handleLogin} 
+        disabled={loading}
+      >
         <Text style={styles.buttonText}>ZALOGUJ SIĘ</Text>
       </TouchableOpacity>
+
+      {/* LINK DO REJESTRACJI */}
+      <TouchableOpacity 
+        onPress={() => router.push('/(auth)/register')} 
+        style={{ marginTop: 25 }}
+      >
+        <Text style={styles.linkText}>Nie masz jeszcze konta? Zarejestruj się</Text>
+      </TouchableOpacity>
+
     </View>
   );
 }
