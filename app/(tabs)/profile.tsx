@@ -2,6 +2,10 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'; 
+import { useNavigation } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useState } from 'react'; 
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
@@ -15,6 +19,9 @@ interface UserProfile { username: string; email: string; avatarUrl: string | nul
 
 export default function PlayerProfile() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams();
+  const fromPath = params.from as string;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
@@ -136,7 +143,16 @@ export default function PlayerProfile() {
       <CustomAlert visible={alertVisible} title={alertConfig.title} message={alertConfig.message} isSuccess={alertConfig.isSuccess} onConfirm={alertConfig.onConfirm} onClose={() => setAlertVisible(false)} showCancel={true} />
 
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/dashboard')}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            if (fromPath) {
+              router.push(fromPath as any);
+            } else {
+              navigation.goBack();
+            }
+          }}
+        >
           <FontAwesome5 name="arrow-left" size={16} color="#ebd59b" />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>PROFIL</Text>
