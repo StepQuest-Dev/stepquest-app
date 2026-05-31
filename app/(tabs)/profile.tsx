@@ -1,11 +1,11 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router'; // Dodałem useFocusEffect
 import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react'; // Dodałem useCallback
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Profile';
-import CustomAlert from '../../components/CustomAlerts'; // Upewnij się, że ścieżka jest dobra
+import CustomAlert from '../../components/CustomAlerts';
 
 // --- INTERFEJSY ---
 interface Character {
@@ -53,7 +53,6 @@ export default function PlayerProfile() {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [avatarClicks, setAvatarClicks] = useState(0);
 
-  // STANY DLA CUSTOM ALERT
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ 
     title: '', 
@@ -65,54 +64,54 @@ export default function PlayerProfile() {
   const handleAvatarPress = () => {
     const nextClicks = avatarClicks + 1;
     setAvatarClicks(nextClicks);
-
     if (nextClicks >= 5) {
       setAvatarClicks(0);
       setAlertConfig({
         title: '🛠️ PANEL PROGRAMISTY',
         message: 'Uzyskano dostęp do narzędzi administracyjnych.',
         isSuccess: true,
-        onConfirm: undefined // Ustawiamy na undefined, żeby nie było przycisków TAK/NIE
+        onConfirm: () => { setAlertVisible(false); router.push('/(tabs)/developerPanel'); }
       });
       setAlertVisible(true);
     }
   };
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const [userRes, charRes, histRes] = await Promise.all([
-          api.get('/auth/me').catch(() => null),
-          api.get('/character').catch(() => null),
-          api.get('/combat/history').catch(() => null)
-        ]);
+  // --- KLUCZOWA ZMIANA: useFocusEffect zamiast useEffect ---
+  useFocusEffect(
+    useCallback(() => {
+      const fetchAllData = async () => {
+        try {
+          // Opcjonalnie: setLoading(true) jeśli chcesz widzieć loading przy każdym powrocie
+          const [userRes, charRes, histRes] = await Promise.all([
+            api.get('/auth/me').catch(() => null),
+            api.get('/character').catch(() => null),
+            api.get('/combat/history').catch(() => null)
+          ]);
 
-        if (userRes?.data) {
-          setProfile({
-            username: userRes.data.username || 'Nieznany Wojownik',
-            email: userRes.data.email || 'brak@email.com',
-            avatarUrl: userRes.data.avatarUrl || null,
-          });
+          if (userRes?.data) {
+            setProfile({
+              username: userRes.data.username || 'Nieznany Wojownik',
+              email: userRes.data.email || 'brak@email.com',
+              avatarUrl: userRes.data.avatarUrl || null,
+            });
+          }
+          if (charRes?.data) {
+            const charData = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
+            setCharacter(charData);
+          }
+          if (histRes?.data) {
+            setCombatStats(histRes.data.stats);
+            setHistory(histRes.data.battles || []);
+          }
+        } catch (error) {
+          console.error('❌ Błąd pobierania profilu:', error);
+        } finally {
+          setLoading(false);
         }
-
-        if (charRes?.data) {
-          const charData = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
-          setCharacter(charData);
-        }
-
-        if (histRes?.data) {
-          setCombatStats(histRes.data.stats);
-          setHistory(histRes.data.battles || []);
-        }
-      } catch (error) {
-        console.error('❌ Błąd pobierania profilu:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllData();
-  }, []);
+      };
+      fetchAllData();
+    }, [])
+  );
 
   const handleLogout = async () => {
     try {
@@ -138,7 +137,7 @@ export default function PlayerProfile() {
     setAlertVisible(true);
   };
 
-  if (loading) {
+  if (loading && !profile) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#ebd59b" />
@@ -179,13 +178,8 @@ export default function PlayerProfile() {
         message={alertConfig.message}
         isSuccess={alertConfig.isSuccess}
         onConfirm={alertConfig.onConfirm}
-        onClose={() => {
-          setAlertVisible(false);
-          // Nawigacja tylko jeśli to był alert dev panelu
-          if (alertConfig.title === '🛠️ PANEL PROGRAMISTY') {
-            router.push('/(tabs)/developerPanel');
-          }
-        }}
+        onClose={() => setAlertVisible(false)}
+        showCancel={true}
       />
 
       <View style={styles.topBar}>
