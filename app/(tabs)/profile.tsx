@@ -1,7 +1,8 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router'; // Dodałem useFocusEffect
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'; 
+import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
-import React, { useCallback, useState } from 'react'; // Dodałem useCallback
+import React, { useCallback, useState } from 'react'; 
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
@@ -44,6 +45,9 @@ interface UserProfile {
 
 export default function PlayerProfile() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams();
+  const fromPath = params.from as string;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
@@ -183,7 +187,16 @@ export default function PlayerProfile() {
       />
 
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/dashboard')}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            if (fromPath) {
+              router.push(fromPath as any);
+            } else {
+              navigation.goBack();
+            }
+          }}
+        >
           <FontAwesome5 name="arrow-left" size={16} color="#ebd59b" />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>PROFIL</Text>

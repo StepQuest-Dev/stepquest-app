@@ -183,7 +183,14 @@ export default function DashboardScreen() {
         </View>
       );
     }
-    const userIconUri = Image.resolveAssetSource(require('@/assets/images/user-icon.png')).uri;
+    // Bezpieczne pobieranie URI ikony (resolveAssetSource może rzucać błędem na Web)
+    const userIconSource = require('@/assets/images/user-icon.png');
+    let userIconUri = '';
+    try {
+      userIconUri = Image.resolveAssetSource(userIconSource).uri;
+    } catch (e) {
+      userIconUri = typeof userIconSource === 'string' ? userIconSource : '';
+    }
     
     const mapHtml = `
       <!DOCTYPE html>
