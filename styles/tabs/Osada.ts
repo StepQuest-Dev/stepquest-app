@@ -135,4 +135,15 @@ export const styles = StyleSheet.create({
     backgroundColor: '#30363d',
     opacity: 0.5
   },
+  modalImage: {
+    width: 64,
+    height: 64,
+    marginBottom: 10,
+    alignSelf: 'center', // Żeby obrazek był wyśrodkowany
+  },
+  plaqueImage: {
+    width: 16,
+    height: 16,
+    marginRight: 6,
+  },
 });

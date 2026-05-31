@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, ImageBackground, Dimensions, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import api from '../../services/api';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
 import TopStatusOverlay from '../../components/TopStatusOverlay';
+import api from '../../services/api';
 import { styles } from '../../styles/tabs/Osada';
 
 
@@ -15,7 +15,7 @@ export default function OsadaScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined  });
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined });
   const [activeNpc, setActiveNpc] = useState<null | 'elder' | 'warlord' | 'builder'>(null);
 
   const [steps, setSteps] = useState(0);
@@ -25,11 +25,11 @@ export default function OsadaScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') throw new Error('Brak uprawnień do GPS.');
-      
+
       const location = await Location.getCurrentPositionAsync({});
-      const res = await api.post('/places/discover', { 
-        lat: location.coords.latitude, 
-        lon: location.coords.longitude 
+      const res = await api.post('/places/discover', {
+        lat: location.coords.latitude,
+        lon: location.coords.longitude
       });
 
       setAlertConfig({
@@ -84,10 +84,11 @@ export default function OsadaScreen() {
   const renderNpcModal = () => {
     if (!activeNpc) return null;
 
+    // 1. Podmiana 'emoji' na 'imageSource' z funkcją require()
     const npcData = {
       elder: {
         name: 'STARY MĘDRZEC',
-        emoji: '🧙‍♂️',
+        imageSource: require('@/assets/images/mnich-icon.png'),
         dialog: '"Mapy starego świata skrywają skarby, o których inni zapomnieli..."',
         actionLabel: 'SZUKAJ WIEDZY',
         onAction: handleDiscover,
@@ -95,19 +96,19 @@ export default function OsadaScreen() {
       },
       warlord: {
         name: 'KAPITAN STRAŻY',
-        emoji: '🛡️',
+        imageSource: require('@/assets/images/warrior-icon.png'),
         dialog: '"Moi ludzie trenują dzień i noc. Wkrótce uderzymy na sąsiednie osady!"',
         actionLabel: 'NAJAZD (WKRÓTCE)',
-        onAction: () => {},
+        onAction: () => { },
         disabled: true,
         color: '#e74c3c'
       },
       builder: {
         name: 'MISTRZ BUDOWNICZY',
-        emoji: '👷',
+        imageSource: require('@/assets/images/loczek-icon.png'), // <-- Twój obrazek budowniczego
         dialog: '"Potrzebujemy więcej surowców, jeśli chcesz wzmocnić mury tej osady."',
         actionLabel: 'ROZBUDUJ (WKRÓTCE)',
-        onAction: () => {},
+        onAction: () => { },
         disabled: true,
         color: '#3498db'
       }
@@ -119,11 +120,18 @@ export default function OsadaScreen() {
           <TouchableOpacity style={styles.closeBtn} onPress={() => setActiveNpc(null)}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.modalEmoji}>{npcData.emoji}</Text>
+
+          {/* 2. Zastąpienie <Text> komponentem <Image> */}
+          <Image
+            source={npcData.imageSource}
+            style={styles.modalImage}
+            resizeMode="contain"
+          />
+
           <Text style={styles.modalName}>{npcData.name}</Text>
           <Text style={styles.modalDialog}>{npcData.dialog}</Text>
-          <TouchableOpacity 
-            style={[styles.modalActionBtn, { backgroundColor: npcData.color }, npcData.disabled && styles.disabledBtn]} 
+          <TouchableOpacity
+            style={[styles.modalActionBtn, { backgroundColor: npcData.color }, npcData.disabled && styles.disabledBtn]}
             onPress={npcData.onAction}
             disabled={npcData.disabled || loading}
           >
@@ -133,15 +141,14 @@ export default function OsadaScreen() {
       </View>
     );
   };
-
   return (
-    <ImageBackground 
-      source={require('@/assets/images/osada_bg.png')} 
+    <ImageBackground
+      source={require('@/assets/images/osada_bg.png')}
       style={styles.container}
       imageStyle={styles.bgImage}
       resizeMode="cover"
     >
-      <CustomAlert 
+      <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
@@ -153,33 +160,34 @@ export default function OsadaScreen() {
 
       {/* --- SCENA MIASTA (TOWN VIEW) --- */}
       <View style={styles.townView}>
-        {/* Elder's Hut (Top Left) */}
+
+        {/* Świątynia */}
         <TouchableOpacity style={[styles.building, styles.hut]} onPress={() => setActiveNpc('elder')}>
           <View style={styles.bubbleWrapper}>
             <View style={styles.plaque}>
-              <Text style={styles.plaqueIcon}>📜</Text>
+              <Image source={require('@/assets/images/zwoj.png')} style={styles.plaqueImage} resizeMode="contain" />
               <Text style={styles.plaqueText}>ŚWIĄTYNIA</Text>
             </View>
             <View style={styles.bubblePointer} />
           </View>
         </TouchableOpacity>
 
-        {/* Barracks (Middle Right) */}
+        {/* Koszary */}
         <TouchableOpacity style={[styles.building, styles.barracks]} onPress={() => setActiveNpc('warlord')}>
           <View style={styles.bubbleWrapper}>
             <View style={[styles.plaque, { borderColor: '#e74c3c' }]}>
-              <Text style={styles.plaqueIcon}>⚔️</Text>
+              <Image source={require('@/assets/images/barracks.png')} style={styles.plaqueImage} resizeMode="contain" />
               <Text style={styles.plaqueText}>KOSZARY</Text>
             </View>
             <View style={[styles.bubblePointer, { borderTopColor: '#e74c3c' }]} />
           </View>
         </TouchableOpacity>
 
-        {/* Workshop (Bottom Left) */}
+        {/* Warsztat */}
         <TouchableOpacity style={[styles.building, styles.workshop]} onPress={() => setActiveNpc('builder')}>
           <View style={styles.bubbleWrapper}>
             <View style={[styles.plaque, { borderColor: '#3498db' }]}>
-              <Text style={styles.plaqueIcon}>🔨</Text>
+              <Image source={require('@/assets/images/workshop.png')} style={styles.plaqueImage} resizeMode="contain" />
               <Text style={styles.plaqueText}>WARSZTAT</Text>
             </View>
             <View style={[styles.bubblePointer, { borderTopColor: '#3498db' }]} />
