@@ -5,12 +5,28 @@ import CustomAlert from '../components/CustomAlerts';
 import api from '../services/api';
 import { styles } from '../styles/tabs/Fight';
 
+// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
+const getCharacterAvatar = (className?: string) => {
+  if (!className) return null; 
+  switch (className.toLowerCase()) {
+    case 'wojownik': return require('@/assets/images/warrior-icon.png');
+    case 'mnich': return require('@/assets/images/mnich-icon.png');
+    case 'czarnoksiężnik':
+    case 'mag': return require('@/assets/images/mag-icon.png');
+    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    default: return null;
+  }
+};
+
 export default function FightScreen() {
   const router = useRouter();
   const { enemyId } = useLocalSearchParams();
 
   const [combatState, setCombatState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // --- NOWY STAN: COOLDOWN NA PRZYCISKI ---
+  const [onCooldown, setOnCooldown] = useState(false);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -20,12 +36,11 @@ export default function FightScreen() {
     onConfirm: undefined as (() => void) | undefined
   });
 
-  const [playerData, setPlayerData] = useState({ name: 'Ty', avatarUrl: null as string | null });
+  const [playerData, setPlayerData] = useState({ name: 'Ty', avatarSource: null as any });
   const [enemyAvatar, setEnemyAvatar] = useState<string | null>(null);
 
   // --- FUNKCJA DEV: WYMUSZONE ZAKOŃCZENIE ---
   const handleDevForceStop = () => {
-    // Możesz tu opcjonalnie dodać api.post('/combat/surrender'...) jeśli backend wspiera
     console.warn("⚔️ [DEV] Wymuszone zakończenie walki przez dewelopera.");
     router.replace('/(tabs)/dungeon');
   };
@@ -42,14 +57,22 @@ export default function FightScreen() {
         ]);
 
         let pName = 'Ty';
-        let pAvatar = null;
+        let pAvatarSource = null;
+        
         if (charRes?.data) {
           const char = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
           if (char?.name) pName = char.name;
+          
+          if (char?.class?.name) {
+            pAvatarSource = getCharacterAvatar(char.class.name);
+          }
         }
-        if (!pAvatar && userRes?.data?.avatarUrl) pAvatar = userRes.data.avatarUrl;
+        
+        if (!pAvatarSource && userRes?.data?.avatarUrl) {
+          pAvatarSource = { uri: userRes.data.avatarUrl };
+        }
 
-        setPlayerData({ name: pName, avatarUrl: pAvatar });
+        setPlayerData({ name: pName, avatarSource: pAvatarSource });
 
         if (enemiesRes?.data) {
           const enemiesList = Array.isArray(enemiesRes.data) ? enemiesRes.data : (enemiesRes.data.data || []);
@@ -74,6 +97,15 @@ export default function FightScreen() {
   }, [enemyId]);
 
   const performAction = async (actionType: string) => {
+    // 1. Zabezpieczenie przed podwójnym kliknięciem / spamem
+    if (loading || onCooldown) return;
+
+    // 2. Aktywacja cooldownu na 2 sekundy (2000 ms)
+    setOnCooldown(true);
+    setTimeout(() => {
+      setOnCooldown(false);
+    }, 2000);
+
     try {
       setLoading(true);
       const res = await api.post('/combat/action', {
@@ -153,7 +185,7 @@ export default function FightScreen() {
     );
   }
 
-  const playerImageSource = playerData.avatarUrl ? { uri: playerData.avatarUrl } : require('@/assets/images/user-icon.png');
+  const finalPlayerImageSource = playerData.avatarSource ? playerData.avatarSource : require('@/assets/images/user-icon.png');
   const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/skelet-icon.png');
 
   return (
@@ -181,7 +213,7 @@ export default function FightScreen() {
 
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <Image source={playerImageSource} style={styles.avatar} resizeMode="cover" />
+          <Image source={finalPlayerImageSource} style={styles.avatar} resizeMode="cover" />
           <Text style={styles.statName} numberOfLines={1}>{playerData.name}</Text>
           <View style={styles.hpContainer}>
             <Text style={styles.hpText}>❤️ {combatState?.playerHp ?? '?'} HP</Text>
@@ -201,18 +233,27 @@ export default function FightScreen() {
 
       <Text style={styles.actionTitle}>WYBIERZ AKCJĘ:</Text>
       <View style={styles.actionsContainer}>
-        {combatState?.availableActions?.map((action: string) => (
-          <TouchableOpacity
-            key={action}
-            style={action === 'FLEE' ? styles.fleeButton : styles.actionButton}
-            onPress={() => performAction(action)}
-            disabled={loading}
-          >
-            <Text style={styles.actionText}>
-              {action === 'ATTACK' ? '⚔️ ATAKUJ' : action === 'FLEE' ? '🏃 UCIEKAJ' : action === 'USE_ITEM' ? '🧪 UŻYJ' : action}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {combatState?.availableActions?.map((action: string) => {
+          // Sprawdzamy czy przyciski mają być zablokowane
+          const isButtonDisabled = loading || onCooldown;
+          
+          return (
+            <TouchableOpacity
+              key={action}
+              // Jeśli jest disabled, dodajemy opacity: 0.5 dla efektu wizualnego
+              style={[
+                action === 'FLEE' ? styles.fleeButton : styles.actionButton,
+                isButtonDisabled && { opacity: 0.5 } 
+              ]}
+              onPress={() => performAction(action)}
+              disabled={isButtonDisabled}
+            >
+              <Text style={styles.actionText}>
+                {action === 'ATTACK' ? '⚔️ ATAKUJ' : action === 'FLEE' ? '🏃 UCIEKAJ' : action === 'USE_ITEM' ? '🧪 UŻYJ' : action}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );

@@ -9,6 +9,25 @@ interface TopStatusOverlayProps {
   onSyncPress?: () => void;
 }
 
+// --- FUNKCJA POMOCNICZA DO DOBIERANIA AWATARU ---
+const getCharacterAvatar = (className?: string) => {
+  if (!className) return require('@/assets/images/user-icon.png');
+
+  switch (className.toLowerCase()) {
+    case 'wojownik':
+      return require('@/assets/images/warrior-icon.png');
+    case 'mnich':
+      return require('@/assets/images/mnich-icon.png');
+    case 'czarnoksiężnik':
+    case 'mag': // w razie jakbyś zmienił nazwę na mag
+      return require('@/assets/images/mag-icon.png');
+    case 'zwiadowca':
+      return require('@/assets/images/loczek-icon.png');
+    default:
+      return require('@/assets/images/user-icon.png');
+  }
+};
+
 export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopStatusOverlayProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,6 +67,9 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
   );
 
   const displaySteps = propSteps !== undefined ? propSteps : serverSteps;
+  
+  // Pobieramy obrazek na podstawie nazwy klasy postaci
+  const avatarSource = getCharacterAvatar(character?.class?.name);
 
   return (
     <View style={dashboardStyles.topOverlay} pointerEvents="box-none">
@@ -57,7 +79,8 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
           onPress={() => router.push({ pathname: '/(tabs)/profile', params: { from: pathname } })} 
           activeOpacity={0.7}
         >
-          <Image source={require('@/assets/images/user-icon.png')} style={dashboardStyles.avatarImage} resizeMode="cover" />
+          {/* Zmiana tutaj: uzywamy avatarSource zamiast statycznego require */}
+          <Image source={avatarSource} style={dashboardStyles.avatarImage} resizeMode="cover" />
         </TouchableOpacity>
         
         <View style={dashboardStyles.profileInfo}>

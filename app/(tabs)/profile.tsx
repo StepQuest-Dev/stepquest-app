@@ -9,10 +9,23 @@ import api from '../../services/api';
 import { styles } from '../../styles/tabs/Profile';
 
 // --- INTERFEJSY ---
-interface Character { id: string; name: string; level: number; exp: number; gold: number; hp: number; maxHp: number; attack: number; defense: number; }
+interface Character { id: string; name: string; level: number; exp: number; gold: number; hp: number; maxHp: number; attack: number; defense: number; class?: { name: string }; }
 interface BattleHistory { id: string; status: 'WON' | 'LOST'; createdAt: string; enemy: { name: string; level: number; }; }
 interface CombatStats { won: number; lost: number; total: number; }
 interface UserProfile { username: string; email: string; avatarUrl: string | null; }
+
+// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
+const getCharacterAvatar = (className?: string) => {
+  if (!className) return require('@/assets/images/user-icon.png');
+  switch (className.toLowerCase()) {
+    case 'wojownik': return require('@/assets/images/warrior-icon.png');
+    case 'mnich': return require('@/assets/images/mnich-icon.png');
+    case 'czarnoksiężnik':
+    case 'mag': return require('@/assets/images/mag-icon.png');
+    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    default: return require('@/assets/images/user-icon.png');
+  }
+};
 
 export default function PlayerProfile() {
   const router = useRouter();
@@ -133,7 +146,10 @@ export default function PlayerProfile() {
   };
 
   const displayedHistory = isHistoryExpanded ? history : history.slice(0, 5);
-  const avatarSource = profile?.avatarUrl ? { uri: profile.avatarUrl } : require('@/assets/images/user-icon.png');
+  
+  const avatarSource = character?.class?.name 
+    ? getCharacterAvatar(character.class.name) 
+    : (profile?.avatarUrl ? { uri: profile.avatarUrl } : require('@/assets/images/user-icon.png'));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -181,17 +197,27 @@ export default function PlayerProfile() {
 
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
-              // Karta istniejącej postaci - jedyny element w tym bloku warunku
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => router.push('/(tabs)/CharacterScreen')}
-                style={{ marginBottom: 20 }} // Dodany margines, aby oddzielić kartę od historii walk
+                style={{ marginBottom: 20 }}
               >
                 <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
-                    <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
-                    <Text style={[styles.levelText, { color: '#ebd59b', fontFamily: 'determination' }]}>Lv. {character.level}</Text>
+                  {/* --- POPRAWKA: Używamy styles.avatarWrapper z marginesem --- */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                    <View style={[styles.avatarWrapper, { marginRight: 15 }]}>
+                      <Image 
+                        source={getCharacterAvatar(character.class?.name)} 
+                        style={styles.avatar} 
+                        resizeMode="cover" 
+                      />
+                    </View>
+                    <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
+                      <Text style={[styles.levelText, { color: '#ebd59b', fontFamily: 'determination' }]}>Lv. {character.level}</Text>
+                    </View>
                   </View>
+
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                     <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
                     <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
@@ -203,7 +229,6 @@ export default function PlayerProfile() {
                 </View>
               </TouchableOpacity>
             ) : (
-              // Przycisk tworzenia postaci, widoczny TYLKO jeśli gracz nie posiada żadnej
               <View style={{ alignItems: 'center', marginVertical: 20 }}>
                 <Text style={styles.emptyText}>Nie posiadasz jeszcze wojownika.</Text>
                 <TouchableOpacity
