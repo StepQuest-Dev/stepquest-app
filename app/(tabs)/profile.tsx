@@ -1,11 +1,8 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'; 
 import { useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
-import React, { useCallback, useState } from 'react'; 
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
