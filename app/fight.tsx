@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import api from '../services/api';
 import { styles } from '../styles/tabs/Fight';
+import CustomAlert from '../components/CustomAlerts';
 
 export default function FightScreen() {
   const router = useRouter();
@@ -10,19 +11,29 @@ export default function FightScreen() {
 
   const [combatState, setCombatState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ 
+    title: '', 
+    message: '', 
+    isSuccess: true, 
+    onConfirm: undefined as (() => void) | undefined 
+  });
 
-  // Dodatkowe stany na dane wizualne postaci
   const [playerData, setPlayerData] = useState({ name: 'Ty', avatarUrl: null as string | null });
   const [enemyAvatar, setEnemyAvatar] = useState<string | null>(null);
+
+  // --- FUNKCJA DEV: WYMUSZONE ZAKOŃCZENIE ---
+  const handleDevForceStop = () => {
+    // Możesz tu opcjonalnie dodać api.post('/combat/surrender'...) jeśli backend wspiera
+    console.warn("⚔️ [DEV] Wymuszone zakończenie walki przez dewelopera.");
+    router.replace('/(tabs)/dungeon');
+  };
 
   useEffect(() => {
     const startCombat = async () => {
       try {
-        console.log(`⚔️ Inicjalizacja walki z potworem o ID: ${enemyId}`);
-
-        // 1. Uderzamy do API po walkę ORAZ dodatkowe dane wizualne (postaci i wrogów) w jednym momencie
         const payload = { enemyId: enemyId };
-        
         const [combatRes, charRes, userRes, enemiesRes] = await Promise.all([
           api.post('/combat/start', payload),
           api.get('/character').catch(() => null),
@@ -30,55 +41,35 @@ export default function FightScreen() {
           api.get('/enemies').catch(() => null)
         ]);
         
-        // Wyciąganie imienia i awatara gracza
         let pName = 'Ty';
         let pAvatar = null;
-        
         if (charRes?.data) {
           const char = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
           if (char?.name) pName = char.name;
         }
-        if (!pAvatar && userRes?.data?.avatarUrl) {
-          pAvatar = userRes.data.avatarUrl;
-        }
+        if (!pAvatar && userRes?.data?.avatarUrl) pAvatar = userRes.data.avatarUrl;
         
         setPlayerData({ name: pName, avatarUrl: pAvatar });
 
-        // Wyciąganie awatara przeciwnika (szukamy go po ID na liście potworów)
         if (enemiesRes?.data) {
           const enemiesList = Array.isArray(enemiesRes.data) ? enemiesRes.data : (enemiesRes.data.data || []);
           const currentEnemy = enemiesList.find((e: any) => e.id === enemyId || e._id === enemyId);
-          if (currentEnemy?.imageUrl) {
-            setEnemyAvatar(currentEnemy.imageUrl);
-          }
+          if (currentEnemy?.imageUrl) setEnemyAvatar(currentEnemy.imageUrl);
         }
 
-        console.log('✅ Walka wystartowała:', combatRes.data);
         setCombatState(combatRes.data);
-
       } catch (error: any) {
-        console.error('❌ BŁĄD STARTU WALKI!');
-        let errorMsg = 'Nieznany błąd serwera.';
-
-        if (error.response) {
-          if (Array.isArray(error.response.data.message)) {
-            const constraints = error.response.data.message[0].constraints;
-            errorMsg = constraints ? Object.values(constraints).join(', ') : 'Błąd walidacji serwera';
-          } else {
-            errorMsg = error.response.data.message || 'Błąd serwera walki';
-          }
-        } else {
-          errorMsg = error.message;
-        }
-
-        Alert.alert('Błąd Walki', errorMsg, [
-          { text: 'Powrót', onPress: () => router.replace('/(tabs)/dungeon') }
-        ]);
+        setAlertConfig({
+          title: 'Błąd Walki',
+          message: error.response?.data?.message || error.message || 'Nieznany błąd.',
+          isSuccess: false,
+          onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+        });
+        setAlertVisible(true);
       } finally {
         setLoading(false);
       }
     };
-    
     startCombat();
   }, [enemyId]);
 
@@ -90,38 +81,50 @@ export default function FightScreen() {
         action: actionType
       });
       
-      console.log('⚔️ Wynik akcji z serwera:', res.data);
+      if (res.data.playerHp <= 0 || res.data.result === 'Defeat' || res.data.result === 'Defeat!') {
+         setAlertConfig({
+           title: '💀 Porażka...',
+           message: 'Zostałeś zdeptany przez wroga.',
+           isSuccess: false,
+           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+         });
+         setAlertVisible(true);
+         return;
+      }
 
-      // 1. OBSŁUGA ZAKOŃCZENIA WALKI
       if (res.data.result === 'Victory!') {
-         Alert.alert(
-           '🏆 Zwycięstwo!', 
-           `Pokonujesz wroga!\n\nZdobywasz:\n⭐ ${res.data.rewards?.exp || 0} EXP\n💰 ${res.data.rewards?.gold || 0} Złota`, 
-           [{ text: 'Chwała Ci', onPress: () => router.replace('/(tabs)/dungeon') }]
-         );
+         setAlertConfig({
+           title: '🏆 Zwycięstwo!',
+           message: `Pokonujesz wroga!\n\nZdobywasz:\n⭐ ${res.data.rewards?.exp || 0} EXP\n💰 ${res.data.rewards?.gold || 0} Złota`,
+           isSuccess: true,
+           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+         });
+         setAlertVisible(true);
          return; 
       } 
       
-      if (res.data.playerHp <= 0 || res.data.result === 'Defeat' || res.data.result === 'Defeat!') {
-         Alert.alert('💀 Porażka...', 'Zostałeś zdeptany przez wroga.', [
-           { text: 'Uciekaj', onPress: () => router.replace('/(tabs)/dungeon') }
-         ]);
-         return;
-      }
-
       if (res.data.result === 'Escaped' || res.data.status === 'FLED' || res.data.result === 'Fled!') {
-         Alert.alert('🏃 Ucieczka', 'Udało Ci się bezpiecznie wycofać z walki!', [
-           { text: 'Uff...', onPress: () => router.replace('/(tabs)/dungeon') }
-         ]);
+         setAlertConfig({
+           title: '🏃 Ucieczka',
+           message: 'Udało Ci się bezpiecznie wycofać z walki!',
+           isSuccess: true,
+           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+         });
+         setAlertVisible(true);
          return;
       }
 
-      // 2. OBSŁUGA ZDARZEŃ W TRAKCIE TURY
       const turnLog = res.data.turnLog || [];
       const fleeFailed = turnLog.some((log: any) => log.action === 'FLEE_FAILED');
 
       if (fleeFailed) {
-        Alert.alert('Zablokowany!', 'Nie udało Ci się uciec! Przeciwnik korzysta z okazji i atakuje.');
+        setAlertConfig({ 
+            title: 'Zablokowany!', 
+            message: 'Nie udało Ci się uciec! Przeciwnik atakuje.', 
+            isSuccess: false,
+            onConfirm: undefined 
+        });
+        setAlertVisible(true);
       }
 
       if (res.data.status !== undefined && !res.data.result) {
@@ -129,8 +132,13 @@ export default function FightScreen() {
       }
 
     } catch (error: any) {
-      console.error('Błąd akcji:', error.response?.data || error.message);
-      Alert.alert('Błąd', 'Twój ruch chybił z powodu błędu serwera!');
+      setAlertConfig({ 
+        title: 'Błąd', 
+        message: 'Twój ruch chybił z powodu błędu serwera!', 
+        isSuccess: false,
+        onConfirm: undefined 
+      });
+      setAlertVisible(true);
     } finally {
       setLoading(false);
     }
@@ -145,22 +153,33 @@ export default function FightScreen() {
     );
   }
 
-  // Definiowanie źródeł obrazków z bezpiecznym fallbackiem
-  const playerImageSource = playerData.avatarUrl 
-    ? { uri: playerData.avatarUrl } 
-    : require('@/assets/images/user-icon.png');
-    
-  const enemyImageSource = enemyAvatar 
-    ? { uri: enemyAvatar } 
-    : require('@/assets/images/user-icon.png');
+  const playerImageSource = playerData.avatarUrl ? { uri: playerData.avatarUrl } : require('@/assets/images/user-icon.png');
+  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/user-icon.png');
 
   return (
     <View style={styles.container}>
+      {/* PRZYCISK DEV */}
+      <TouchableOpacity 
+        onPress={handleDevForceStop} 
+        style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(231, 76, 60, 0.4)', padding: 6, borderRadius: 5, zIndex: 999 }}
+      >
+        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>DEV: STOP</Text>
+      </TouchableOpacity>
+
+      <CustomAlert 
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        isSuccess={alertConfig.isSuccess}
+        onConfirm={alertConfig.onConfirm}
+        onClose={() => setAlertVisible(false)}
+        showCancel={false}
+      />
+
       <Text style={styles.title}>⚔️ WALKA ⚔️</Text>
       <Text style={styles.turn}>Tura: {combatState?.turn || '?'}</Text>
 
       <View style={styles.statsContainer}>
-        {/* GRACZ */}
         <View style={styles.statBox}>
           <Image source={playerImageSource} style={styles.avatar} resizeMode="cover" />
           <Text style={styles.statName} numberOfLines={1}>{playerData.name}</Text>
@@ -171,7 +190,6 @@ export default function FightScreen() {
 
         <Text style={styles.vs}>VS</Text>
 
-        {/* PRZECIWNIK */}
         <View style={styles.statBox}>
           <Image source={enemyImageSource} style={styles.avatar} resizeMode="cover" />
           <Text style={styles.statName} numberOfLines={1}>{combatState?.enemyName || 'Wróg'}</Text>
@@ -196,8 +214,6 @@ export default function FightScreen() {
           </TouchableOpacity>
         ))}
       </View>
-
-      {loading && combatState && <ActivityIndicator size="small" color="#ebd59b" style={{ marginTop: 20 }} />}
     </View>
   );
 }
