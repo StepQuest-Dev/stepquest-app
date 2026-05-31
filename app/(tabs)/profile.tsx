@@ -123,7 +123,7 @@ export default function PlayerProfile() {
       <View style={[styles.characterCard, { borderColor: isWin ? '#a38450' : '#8b0000', marginBottom: 10 }]}>
         <View style={styles.characterInfo}>
           <Text style={styles.characterName}>{item.enemy.name} (Lv. {item.enemy.level})</Text>
-          <Text style={{ color: '#8a94a6', fontSize: 12 }}>{date}</Text>
+          <Text style={{ color: '#8a94a6', fontSize: 12, fontFamily: 'determination' }}>{date}</Text>
         </View>
         <View style={[styles.characterLevelBadge, { backgroundColor: isWin ? '#2a3642' : '#4a1515' }]}>
           <Text style={[styles.characterLevelText, { color: isWin ? '#ebd59b' : '#ff4c4c' }]}>{isWin ? 'ZWYCIĘSTWO' : 'PORAŻKA'}</Text>
@@ -228,10 +228,10 @@ export default function PlayerProfile() {
         ListFooterComponent={
           history.length > 5 ? (
             <TouchableOpacity
-              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }}
+              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20, }}
               onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
             >
-              <Text style={{ color: '#ebd59b', fontWeight: 'bold', fontSize: 16 }}>
+              <Text style={{ color: '#ebd59b', fontSize: 16, fontFamily: 'determination' }}>
                 {isHistoryExpanded ? 'Zwiń historię ⬆️' : 'Pokaż więcej ⬇️'}
               </Text>
             </TouchableOpacity>

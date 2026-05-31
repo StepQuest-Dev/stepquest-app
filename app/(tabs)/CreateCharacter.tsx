@@ -6,6 +6,23 @@ import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
 import { charStyles as styles } from '../../styles/tabs/CharacterScreens';
 
+// Mapa nazw klas na obrazki
+const CLASS_ICONS: Record<string, any> = {
+  'WOJOWNIK': require('@/assets/images/warrior-icon.png'),
+  'CZARNOKSIĘŻNIK': require('@/assets/images/mag-icon.png'),
+  'MNICH': require('@/assets/images/mnich-icon.png'),
+  'TEMPLARIUSZ': require('@/assets/images/templar-icon.png'),
+  'ZWIADOWCA': require('@/assets/images/loczek-icon.png'),
+};
+
+const DEFAULT_ICON = require('@/assets/images/user-icon.png');
+
+function getClassIcon(className: string) {
+  if (!className) return DEFAULT_ICON;
+  const key = className.toUpperCase().trim();
+  return CLASS_ICONS[key] ?? DEFAULT_ICON;
+}
+
 export default function CreateCharacter() {
   const router = useRouter();
   const [classes, setClasses] = useState<any[]>([]);
@@ -20,23 +37,18 @@ export default function CreateCharacter() {
     const fetchClasses = async () => {
       try {
         console.log('📡 Pobieram klasy postaci z backendu (/classes)...');
-        // Zgodnie z Twoim adresem: http://localhost:3000/api/v1/classes
-        const res = await api.get('/classes'); 
+        const res = await api.get('/classes');
         console.log('✅ Sukces! Odpowiedź serwera:', res.data);
-        
-        // Zabezpieczenie przed różnymi strukturami z NestJS (res.data lub res.data.data)
         const classesArray = Array.isArray(res.data) ? res.data : (res.data.data || []);
         setClasses(classesArray);
-
       } catch (err: any) {
         console.error('❌ Błąd pobierania klas:');
         console.error('Status:', err.response?.status);
         console.error('Wiadomość:', err.response?.data?.message || err.message);
-        
-        setAlertConfig({ 
-          title: 'BŁĄD SIECI', 
-          message: 'Nie udało się połączyć z bazą klas. Sprawdź serwer.', 
-          isSuccess: false 
+        setAlertConfig({
+          title: 'BŁĄD SIECI',
+          message: 'Nie udało się połączyć z bazą klas. Sprawdź serwer.',
+          isSuccess: false
         });
         setAlertVisible(true);
       } finally {
@@ -54,7 +66,6 @@ export default function CreateCharacter() {
     }
     try {
       setLoading(true);
-      // Uderza do POST /character
       await api.post('/character', { name: charName, classId: selectedClassId });
       router.replace('/(tabs)/profile');
     } catch (err: any) {
@@ -68,7 +79,7 @@ export default function CreateCharacter() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#ebd59b" />
-        <Text style={{ color: '#ebd59b', marginTop: 10, fontFamily: 'determination' }}>Wczytywanie starożytnych pism...</Text>
+        <Text style={{ color: '#ebd59b', marginTop: 10, fontFamily: 'PixelifySans' }}>Wczytywanie starożytnych pism...</Text>
       </View>
     );
   }
@@ -76,7 +87,7 @@ export default function CreateCharacter() {
   return (
     <SafeAreaView style={styles.container}>
       <CustomAlert visible={alertVisible} title={alertConfig.title} message={alertConfig.message} isSuccess={alertConfig.isSuccess} onClose={() => setAlertVisible(false)} showCancel={false} />
-      
+
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/profile')}>
           <FontAwesome5 name="arrow-left" size={16} color="#ebd59b" />
@@ -86,38 +97,37 @@ export default function CreateCharacter() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.inputTitle}>IMIĘ BOHATERA</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Wpisz imię..." 
+        <TextInput
+          style={styles.input}
+          placeholder="Wpisz imię..."
           placeholderTextColor="#8a94a6"
           value={charName}
           onChangeText={setCharName}
         />
 
         <Text style={styles.inputTitle}>WYBIERZ KLASĘ</Text>
-        
+
         {classes.length === 0 ? (
-           <View style={{ backgroundColor: '#1d2631', padding: 20, borderRadius: 8, borderColor: '#e74c3c', borderWidth: 1 }}>
-              <Text style={{ color: '#e74c3c', textAlign: 'center', fontFamily: 'determination' }}>
-                 Brak klas w bazie danych! Upewnij się, że poprawnie wykonałeś seeding (npx ts-node prisma/seed.ts).
-              </Text>
-           </View>
+          <View style={{ backgroundColor: '#1d2631', padding: 20, borderRadius: 8, borderColor: '#e74c3c', borderWidth: 1 }}>
+            <Text style={{ color: '#e74c3c', textAlign: 'center', fontFamily: 'determination' }}>
+              Brak klas w bazie danych! Upewnij się, że poprawnie wykonałeś seeding (npx ts-node prisma/seed.ts).
+            </Text>
+          </View>
         ) : (
           classes.map((cls) => {
             const isSelected = selectedClassId === cls.id;
             return (
-              <TouchableOpacity 
-                key={cls.id} 
+              <TouchableOpacity
+                key={cls.id}
                 style={[styles.classCard, isSelected && styles.classCardSelected]}
                 activeOpacity={0.7}
                 onPress={() => setSelectedClassId(cls.id)}
               >
-                <Image source={require('@/assets/images/user-icon.png')} style={styles.classIcon} />
+                <Image source={getClassIcon(cls.name)} style={styles.classIcon} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.classTitle}>{cls.name.toUpperCase()}</Text>
                   <Text style={styles.classDesc} numberOfLines={2}>{cls.description}</Text>
                   <View style={styles.statsRow}>
-                    {/* Bierzemy baseHp lub hp (zależnie jak to nazwałeś w bazie) */}
                     <Text style={[styles.statText, { color: '#e74c3c' }]}>❤️ {cls.baseHp || cls.hp || 0}</Text>
                     <Text style={[styles.statText, { color: '#ebd59b' }]}>⚔️ {cls.baseAttack || cls.attack || 0}</Text>
                     <Text style={[styles.statText, { color: '#3498db' }]}>🛡️ {cls.baseDefense || cls.defense || 0}</Text>
@@ -128,9 +138,9 @@ export default function CreateCharacter() {
           })
         )}
 
-        <TouchableOpacity 
-          style={[styles.submitBtn, classes.length === 0 && { opacity: 0.5 }]} 
-          onPress={handleCreate} 
+        <TouchableOpacity
+          style={[styles.submitBtn, classes.length === 0 && { opacity: 0.5 }]}
+          onPress={handleCreate}
           disabled={loading || classes.length === 0}
         >
           {loading ? <ActivityIndicator color="#12181f" /> : <Text style={styles.submitBtnText}>WYRUSZ W DROGĘ</Text>}

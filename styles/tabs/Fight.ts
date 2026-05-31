@@ -19,7 +19,8 @@ export const styles = StyleSheet.create({
     color: '#ebd59b',
     fontSize: 18,
     textAlign: 'center',
-    marginBottom: 30
+    marginBottom: 30,
+    fontFamily: 'determination'
   },
   text: {
     color: '#8a94a6',
@@ -46,7 +47,7 @@ export const styles = StyleSheet.create({
   avatar: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 5,
     borderWidth: 2,
     borderColor: '#ebd59b',
     marginBottom: 10,

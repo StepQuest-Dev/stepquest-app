@@ -1,9 +1,9 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
+import CustomAlert from '../components/CustomAlerts';
 import api from '../services/api';
 import { styles } from '../styles/tabs/Fight';
-import CustomAlert from '../components/CustomAlerts';
 
 export default function FightScreen() {
   const router = useRouter();
@@ -11,13 +11,13 @@ export default function FightScreen() {
 
   const [combatState, setCombatState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ 
-    title: '', 
-    message: '', 
-    isSuccess: true, 
-    onConfirm: undefined as (() => void) | undefined 
+  const [alertConfig, setAlertConfig] = useState({
+    title: '',
+    message: '',
+    isSuccess: true,
+    onConfirm: undefined as (() => void) | undefined
   });
 
   const [playerData, setPlayerData] = useState({ name: 'Ty', avatarUrl: null as string | null });
@@ -40,7 +40,7 @@ export default function FightScreen() {
           api.get('/auth/me').catch(() => null),
           api.get('/enemies').catch(() => null)
         ]);
-        
+
         let pName = 'Ty';
         let pAvatar = null;
         if (charRes?.data) {
@@ -48,7 +48,7 @@ export default function FightScreen() {
           if (char?.name) pName = char.name;
         }
         if (!pAvatar && userRes?.data?.avatarUrl) pAvatar = userRes.data.avatarUrl;
-        
+
         setPlayerData({ name: pName, avatarUrl: pAvatar });
 
         if (enemiesRes?.data) {
@@ -80,49 +80,49 @@ export default function FightScreen() {
         sessionId: combatState.sessionId,
         action: actionType
       });
-      
+
       if (res.data.playerHp <= 0 || res.data.result === 'Defeat' || res.data.result === 'Defeat!') {
-         setAlertConfig({
-           title: '💀 Porażka...',
-           message: 'Zostałeś zdeptany przez wroga.',
-           isSuccess: false,
-           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
-         });
-         setAlertVisible(true);
-         return;
+        setAlertConfig({
+          title: '💀 Porażka...',
+          message: 'Zostałeś zdeptany przez wroga.',
+          isSuccess: false,
+          onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+        });
+        setAlertVisible(true);
+        return;
       }
 
       if (res.data.result === 'Victory!') {
-         setAlertConfig({
-           title: '🏆 Zwycięstwo!',
-           message: `Pokonujesz wroga!\n\nZdobywasz:\n⭐ ${res.data.rewards?.exp || 0} EXP\n💰 ${res.data.rewards?.gold || 0} Złota`,
-           isSuccess: true,
-           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
-         });
-         setAlertVisible(true);
-         return; 
-      } 
-      
+        setAlertConfig({
+          title: '🏆 Zwycięstwo!',
+          message: `Pokonujesz wroga!\n\nZdobywasz:\n⭐ ${res.data.rewards?.exp || 0} EXP\n💰 ${res.data.rewards?.gold || 0} Złota`,
+          isSuccess: true,
+          onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+        });
+        setAlertVisible(true);
+        return;
+      }
+
       if (res.data.result === 'Escaped' || res.data.status === 'FLED' || res.data.result === 'Fled!') {
-         setAlertConfig({
-           title: '🏃 Ucieczka',
-           message: 'Udało Ci się bezpiecznie wycofać z walki!',
-           isSuccess: true,
-           onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
-         });
-         setAlertVisible(true);
-         return;
+        setAlertConfig({
+          title: '🏃 Ucieczka',
+          message: 'Udało Ci się bezpiecznie wycofać z walki!',
+          isSuccess: true,
+          onConfirm: () => { setAlertVisible(false); router.replace('/(tabs)/dungeon'); }
+        });
+        setAlertVisible(true);
+        return;
       }
 
       const turnLog = res.data.turnLog || [];
       const fleeFailed = turnLog.some((log: any) => log.action === 'FLEE_FAILED');
 
       if (fleeFailed) {
-        setAlertConfig({ 
-            title: 'Zablokowany!', 
-            message: 'Nie udało Ci się uciec! Przeciwnik atakuje.', 
-            isSuccess: false,
-            onConfirm: undefined 
+        setAlertConfig({
+          title: 'Zablokowany!',
+          message: 'Nie udało Ci się uciec! Przeciwnik atakuje.',
+          isSuccess: false,
+          onConfirm: undefined
         });
         setAlertVisible(true);
       }
@@ -132,11 +132,11 @@ export default function FightScreen() {
       }
 
     } catch (error: any) {
-      setAlertConfig({ 
-        title: 'Błąd', 
-        message: 'Twój ruch chybił z powodu błędu serwera!', 
+      setAlertConfig({
+        title: 'Błąd',
+        message: 'Twój ruch chybił z powodu błędu serwera!',
         isSuccess: false,
-        onConfirm: undefined 
+        onConfirm: undefined
       });
       setAlertVisible(true);
     } finally {
@@ -154,19 +154,19 @@ export default function FightScreen() {
   }
 
   const playerImageSource = playerData.avatarUrl ? { uri: playerData.avatarUrl } : require('@/assets/images/user-icon.png');
-  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/user-icon.png');
+  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/skelet-icon.png');
 
   return (
     <View style={styles.container}>
       {/* PRZYCISK DEV */}
-      <TouchableOpacity 
-        onPress={handleDevForceStop} 
+      <TouchableOpacity
+        onPress={handleDevForceStop}
         style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(231, 76, 60, 0.4)', padding: 6, borderRadius: 5, zIndex: 999 }}
       >
         <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>DEV: STOP</Text>
       </TouchableOpacity>
 
-      <CustomAlert 
+      <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}

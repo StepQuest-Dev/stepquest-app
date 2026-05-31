@@ -207,7 +207,8 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#8a94a6',
         marginTop: 20,
-        fontStyle: 'italic',
-        fontSize: 13
+        //fontStyle: 'italic',
+        fontSize: 13,
+        fontFamily: 'determination'
     }
 });

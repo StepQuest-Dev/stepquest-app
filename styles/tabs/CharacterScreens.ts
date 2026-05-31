@@ -5,15 +5,15 @@ export const charStyles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingTop: 10 },
   backButton: { padding: 10 },
   topBarTitle: { color: '#ebd59b', fontSize: 20, fontFamily: 'determination', marginLeft: 15 },
-  
+
   // Create Character
   inputTitle: { color: '#8a94a6', fontFamily: 'determination', fontSize: 14, marginBottom: 5 },
   input: { backgroundColor: '#1d2631', color: '#fff', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#2a3642', marginBottom: 20, fontFamily: 'determination' },
   classCard: { backgroundColor: '#1d2631', padding: 15, borderRadius: 8, borderWidth: 2, borderColor: '#2a3642', marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
   classCardSelected: { borderColor: '#ebd59b', backgroundColor: '#2a3642' },
-  classIcon: { width: 50, height: 50, borderRadius: 25, marginRight: 15 },
+  classIcon: { width: 50, height: 50, borderRadius: 5, marginRight: 15, borderWidth: 2, borderColor: '#ebd59b' },
   classTitle: { color: '#ebd59b', fontFamily: 'determination', fontSize: 18 },
-  classDesc: { color: '#8a94a6', fontSize: 12, marginTop: 4, paddingRight: 50 },
+  classDesc: { fontFamily: 'determination', color: '#8a94a6', fontSize: 12, marginTop: 4, paddingRight: 50 },
   statsRow: { flexDirection: 'row', gap: 15, marginTop: 8 },
   statText: { fontFamily: 'determination', fontSize: 12 },
   submitBtn: { backgroundColor: '#ebd59b', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 20 },

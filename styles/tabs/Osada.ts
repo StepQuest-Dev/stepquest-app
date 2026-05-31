@@ -117,7 +117,7 @@ export const styles = StyleSheet.create({
   modalDialog: {
     color: '#c9d1d9',
     fontSize: 14,
-    fontStyle: 'italic',
+    //fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 25,
@@ -143,7 +143,10 @@ export const styles = StyleSheet.create({
     width: 64,
     height: 64,
     marginBottom: 10,
-    alignSelf: 'center', // Żeby obrazek był wyśrodkowany
+    alignSelf: 'center',
+    borderWidth: 2,
+    borderColor: '#a38450',
+    borderRadius: 5
   },
   plaqueImage: {
     width: 16,

@@ -15,7 +15,7 @@ export default function OsadaScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined  });
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined });
   const [activeNpc, setActiveNpc] = useState<null | 'elder' | 'warlord' | 'builder' | 'guild'>(null);
 
   const [steps, setSteps] = useState(0);
@@ -114,10 +114,10 @@ export default function OsadaScreen() {
       },
       guild: {
         name: 'MISTRZ GILDII',
-        emoji: '👑',
+        imageSource: require('@/assets/images/templar-icon.png'),
         dialog: '"W jedności siła, wędrowcze. Dołącz do nas, by wspólnie podbijać ten mroczny świat!"',
         actionLabel: 'GILDIE (WKRÓTCE)',
-        onAction: () => {},
+        onAction: () => { },
         disabled: true,
         color: '#9b59b6'
       }
@@ -207,7 +207,7 @@ export default function OsadaScreen() {
         <TouchableOpacity style={[styles.building, styles.guild]} onPress={() => setActiveNpc('guild')}>
           <View style={styles.bubbleWrapper}>
             <View style={[styles.plaque, { borderColor: '#9b59b6' }]}>
-              <Text style={styles.plaqueIcon}>🛡️</Text>
+              <Image source={require('@/assets/images/guild.png')} style={styles.plaqueImage} resizeMode="contain" />
               <Text style={styles.plaqueText}>GILDIA</Text>
             </View>
             <View style={[styles.bubblePointer, { borderTopColor: '#9b59b6' }]} />
