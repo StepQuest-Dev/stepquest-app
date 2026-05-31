@@ -8,8 +8,9 @@
     "scheme": "stepquestapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-    "resizeMode": "contain",
-    "backgroundColor": "#12181f"
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#12181f"
     },
     "ios": {
       "supportsTablet": true
@@ -29,7 +30,7 @@
       },
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.health.READ_STEPS"
       ],
       "package": "com.miczel.stepquestapp"
     },
@@ -40,13 +41,18 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "expo-health-connect",
       [
-        "expo-sensors",
+        "expo-build-properties",
         {
-          "motionPermission": "Zezwól aplikacji na dostęp do czujników ruchu, aby zliczać Twoje kroki."
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 26
+          }
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

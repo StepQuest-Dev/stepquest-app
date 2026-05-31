@@ -1,9 +1,13 @@
 import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+
+// --- IMPORTY SYSTEMOWE ---
+import { initialize, requestPermission, readRecords } from 'react-native-health-connect';
+
+// --- IMPORTY TWOICH KOMPONENTÓW ---
 import GameDiagnostics from '../../components/GameDiagnostics';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dashboard';
@@ -23,7 +27,7 @@ export default function DashboardScreen() {
   // --- STAN UKRYWANIA PASKA ---
   const [isNavVisible, setIsNavVisible] = useState(true);
 
-  // --- NOWE STANY ALERTÓW ---
+  // --- STANY ALERTÓW ---
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ 
     title: '', 
@@ -47,6 +51,7 @@ export default function DashboardScreen() {
     setCurrentStatus(msg);
   };
 
+  // --- WYSYŁKA NA SERWER ---
   const syncStepsWithServer = async (currentSteps: number) => {
     try {
       await api.post('/steps', { count: currentSteps });
@@ -62,14 +67,61 @@ export default function DashboardScreen() {
     }
   };
 
+  // --- POBIERANIE Z HEALTH CONNECT (ANDROID) ---
+  const fetchStepsFromHealthConnect = async (isManualSync = false) => {
+    if (Platform.OS !== 'android') return;
+
+    try {
+      if (isManualSync) addLog('Ręczne wymuszenie synchronizacji Health Connect...');
+      
+      const isInitialized = await initialize();
+      if (!isInitialized) {
+        addLog('⚠️ Health Connect nie jest dostępny na tym urządzeniu.');
+        return;
+      }
+
+      await requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const result = await readRecords('Steps', {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: today.toISOString(),
+          endTime: tomorrow.toISOString(),
+        },
+      });
+
+      // Bezpieczne sumowanie z records.reduce
+      const totalStepsToday = result.records.reduce((sum, record) => sum + record.count, 0);
+
+      setSteps((prevTotal) => {
+        if (totalStepsToday > prevTotal) {
+          if (isManualSync) syncStepsWithServer(totalStepsToday);
+          return totalStepsToday;
+        }
+        if (isManualSync) syncStepsWithServer(prevTotal);
+        return prevTotal;
+      });
+      
+      addLog(`✅ Pomyślnie zaciągnięto kroki z telefonu: ${totalStepsToday}`);
+    } catch (error: any) {
+      addLog('❌ Błąd pobierania danych z Health Connect: ' + error.message);
+    }
+  };
+
+  // --- ALERT SYNCHRONIZACJI ---
   const openSyncAlert = () => {
     setAlertConfig({
       title: '🛡️ SYNCHRONIZACJA',
-      message: `Czy chcesz przymusowo zsynchronizować zebrane ${steps} kroków z bazą danych?`,
+      message: `Czy chcesz pobrać najnowsze kroki z telefonu i zapisać je w chmurze?`,
       isSuccess: false,
       onConfirm: () => {
         setAlertVisible(false);
-        syncStepsWithServer(steps);
+        fetchStepsFromHealthConnect(true);
       }
     });
     setAlertVisible(true);
@@ -91,11 +143,9 @@ export default function DashboardScreen() {
   );
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
     let isMounted = true;
-    let watchAccumulator = 0;
 
-    const fetchDashboardAndStartPedometer = async () => {
+    const fetchDashboardData = async () => {
       try {
         addLog('Uderzam do NestJS po dane profilu...');
         const userResponse = await api.get('/auth/me');
@@ -113,33 +163,12 @@ export default function DashboardScreen() {
           setErrorMsg('Brak uprawnień do GPS.');
         }
 
-        if (Platform.OS !== 'web') {
-          addLog('Sprawdzanie czujników ruchu...');
-          const isPedometerAvailable = await Pedometer.isAvailableAsync();
-          if (isPedometerAvailable) {
-            try {
-              const res = await api.get('/steps/latest');
-              if (isMounted) setSteps(res.data.steps || res.data.count || 0);
-            } catch (e) { addLog('⚠️ Brak wpisów w bazie.'); }
-
-            subscription = Pedometer.watchStepCount((result) => {
-              if (isMounted) {
-                const hardwareCounter = result.steps;
-                const delta = hardwareCounter - watchAccumulator;
-                if (delta > 0) {
-                  setSteps((prevTotal) => {
-                    const updatedTotal = prevTotal + delta;
-                    syncStepsWithServer(updatedTotal);
-                    return updatedTotal;
-                  });
-                  watchAccumulator = hardwareCounter;
-                }
-              }
-            });
-          }
+        if (Platform.OS === 'android') {
+          addLog('Inicjalizacja integracji z Health Connect...');
+          await fetchStepsFromHealthConnect(false);
         } else {
-            const res = await api.get('/steps/latest');
-            if (isMounted) setSteps(res.data.steps || res.data.count || 0);
+          const res = await api.get('/steps/latest');
+          if (isMounted) setSteps(res.data.steps || res.data.count || 0);
         }
 
         addLog('🚀 Inicjalizacja zakończona!');
@@ -156,8 +185,8 @@ export default function DashboardScreen() {
       }
     };
 
-    fetchDashboardAndStartPedometer();
-    return () => { isMounted = false; if (subscription) subscription.remove(); };
+    fetchDashboardData();
+    return () => { isMounted = false; };
   }, []);
 
   if (loading || networkErrorDetails) {
@@ -170,6 +199,32 @@ export default function DashboardScreen() {
     );
   }
 
+  // --- OBSŁUGA KLIKNIĘĆ Z MAPY WEBVIEW ---
+  const handleMapMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      
+      if (data.type === 'toggle_nav') {
+        setIsNavVisible(!isNavVisible);
+      } else if (data.type === 'dungeon_click') {
+        // Gdy gracz kliknie w loch na mapie:
+        setAlertConfig({
+          title: `⚔️ ${data.name.toUpperCase()}`,
+          message: `Znalazłeś loch! Czy chcesz zużyć 500 Step Coins, aby wejść do środka i zmierzyć się z przeciwnikiem?`,
+          isSuccess: false, // false wymusza pokazanie przycisku Anuluj/Potwierdź
+          onConfirm: () => {
+            setAlertVisible(false);
+            // Tutaj możesz dodać logikę odejmowania kroków lub przekierowanie do walki
+            alert(`Wkraczasz do: ${data.name}! (Logika walki wkrótce)`);
+          }
+        });
+        setAlertVisible(true);
+      }
+    } catch (e) {
+      console.warn("Nierozpoznana wiadomość z WebView", e);
+    }
+  };
+
   const renderMapArea = () => {
     if (!location) {
       return (
@@ -178,22 +233,63 @@ export default function DashboardScreen() {
         </View>
       );
     }
+    
     const userIconUri = Image.resolveAssetSource(require('@/assets/images/user-icon.png')).uri;
+    
+    // Generujemy mapę z nałożonymi lochami (przesuniętymi względem gracza)
     const mapHtml = `
       <!DOCTYPE html>
       <html>
-      <head><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <style>body{padding:0;margin:0;background-color:#12181f}#map{width:100%;height:100vh}.leaflet-layer{filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)}.custom-player-icon{border-radius:25%;background-color:#2a3642;box-shadow:2px 2px 4px rgba(0,0,0,0.8);object-fit:cover;}</style></head>
-      <body><div id="map"></div><script>
-      var map=L.map('map',{zoomControl:false}).setView([${location.coords.latitude},${location.coords.longitude}],16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-      var playerIcon=L.icon({iconUrl:'${userIconUri}',iconSize:[40,40],iconAnchor:[20,20],className:'custom-player-icon'});
-      L.marker([${location.coords.latitude},${location.coords.longitude}],{icon:playerIcon}).addTo(map);
-      map.on('click',function(){window.ReactNativeWebView.postMessage('toggle_nav');});
-      </script></body></html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          body { padding:0; margin:0; background-color:#12181f; }
+          #map { width:100%; height:100vh; }
+          .leaflet-layer { filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+          .custom-player-icon { border-radius:25%; background-color:#2a3642; box-shadow:2px 2px 4px rgba(0,0,0,0.8); object-fit:cover; }
+          .dungeon-icon { font-size:32px; text-shadow: 0 0 15px rgba(255,50,50,0.8), 2px 2px 5px #000; text-align:center; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map',{zoomControl:false}).setView([${location.coords.latitude}, ${location.coords.longitude}], 16);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+          
+          // --- ZNACZNIK GRACZA ---
+          var playerIcon = L.icon({iconUrl:'${userIconUri}', iconSize:[40,40], iconAnchor:[20,20], className:'custom-player-icon'});
+          L.marker([${location.coords.latitude}, ${location.coords.longitude}], {icon:playerIcon})
+           .addTo(map)
+           .bindPopup("<b>To Ty!</b><br>Eksploruj okolicę.");
+
+          // --- GENEROWANIE LOCHÓW (IKONKI) ---
+          var dungeons = [
+            { name: "Mroczne Podziemia", icon: "🏰", lat: ${location.coords.latitude + 0.0015}, lng: ${location.coords.longitude + 0.002} },
+            { name: "Jaskinia Goblinów", icon: "💀", lat: ${location.coords.latitude - 0.002}, lng: ${location.coords.longitude + 0.001} },
+            { name: "Opuszczona Kopalnia", icon: "🦇", lat: ${location.coords.latitude + 0.0008}, lng: ${location.coords.longitude - 0.0025} }
+          ];
+
+          dungeons.forEach(function(dungeon) {
+            var dIcon = L.divIcon({ html: '<div class="dungeon-icon">' + dungeon.icon + '</div>', className: '', iconSize: [36,36], iconAnchor: [18,18] });
+            var marker = L.marker([dungeon.lat, dungeon.lng], {icon: dIcon}).addTo(map);
+            
+            // Kliknięcie w loch wysyła sygnał do aplikacji w React Native
+            marker.on('click', function() {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'dungeon_click', name: dungeon.name }));
+            });
+          });
+
+          // --- KLIKNIĘCIE W PUSTĄ MAPĘ (Ukrywa/Pokazuje pasek zadań) ---
+          map.on('click', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'toggle_nav' }));
+          });
+        </script>
+      </body>
+      </html>
     `;
+
     if (Platform.OS !== 'web') {
       return (
         <WebView
@@ -201,7 +297,7 @@ export default function DashboardScreen() {
           source={{ html: mapHtml }}
           style={{ flex: 1, backgroundColor: '#171f2a' }}
           scrollEnabled={false}
-          onMessage={(e) => { if(e.nativeEvent.data === 'toggle_nav') setIsNavVisible(!isNavVisible) }}
+          onMessage={handleMapMessage} // <--- Podpięta nowa funkcja
         />
       );
     }
