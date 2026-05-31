@@ -11,20 +11,32 @@ import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
 import TopStatusOverlay from '../../components/TopStatusOverlay';
 
+// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
+const getCharacterAvatar = (className?: string) => {
+  if (!className) return require('@/assets/images/user-icon.png');
+  switch (className.toLowerCase()) {
+    case 'wojownik': return require('@/assets/images/warrior-icon.png');
+    case 'mnich': return require('@/assets/images/mnich-icon.png');
+    case 'czarnoksiężnik':
+    case 'mag': return require('@/assets/images/mag-icon.png');
+    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    default: return require('@/assets/images/user-icon.png');
+  }
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
-
+  
+  const [character, setCharacter] = useState<any>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- STAN UKRYWANIA PASKA ---
   const [isNavVisible, setIsNavVisible] = useState(true);
 
-  // --- NOWE STANY ALERTÓW ---
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ 
     title: '', 
@@ -33,7 +45,6 @@ export default function DashboardScreen() {
     onConfirm: undefined as (() => void) | undefined 
   });
 
-  // --- STANY DIAGNOSTYKI ---
   const [currentStatus, setCurrentStatus] = useState('Inicjalizacja świata gry...');
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [networkErrorDetails, setNetworkErrorDetails] = useState<string | null>(null);
@@ -94,8 +105,19 @@ export default function DashboardScreen() {
         } catch (e) { }
       };
 
+      const fetchCharacter = async () => {
+        try {
+          const res = await api.get('/character');
+          if (isActive && res.data) {
+            const charData = Array.isArray(res.data) ? res.data[0] : res.data;
+            setCharacter(charData);
+          }
+        } catch (e) { }
+      };
+
       fetchLatestSteps();
       fetchPlaces();
+      fetchCharacter();
       return () => { isActive = false; };
     }, [])
   );
@@ -183,8 +205,9 @@ export default function DashboardScreen() {
         </View>
       );
     }
-    // Bezpieczne pobieranie URI ikony (resolveAssetSource może rzucać błędem na Web)
-    const userIconSource = require('@/assets/images/user-icon.png');
+    
+    const userIconSource = getCharacterAvatar(character?.class?.name);
+    
     let userIconUri = '';
     try {
       userIconUri = Image.resolveAssetSource(userIconSource).uri;
@@ -203,14 +226,15 @@ export default function DashboardScreen() {
         body { padding: 0; margin: 0; background-color: #43688b; }
         #map { width: 100%; height: 100vh; }
         
-        /* ZWIĘKSZONO JASNOŚĆ: brightness zmienione z 95% na 120% */
         .leaflet-layer {
           filter: invert(100%) hue-rotate(180deg) brightness(250%) contrast(80%);
         }
         
+        /* --- DODANA ZŁOTA RAMKA Z CSS --- */
         .custom-player-icon {
-          border-radius: 25%;
-          background-color: #2a3642;
+          border-radius: 8px; /* Lekkie zaokrąglenie dla estetyki */
+          background-color: #2a3642; /* Tło pod ikonką, na wypadek gdyby miała przezroczystość */
+          border: 2px solid #a38450; /* Złoty border RPG */
           box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
           object-fit: cover;
         }
@@ -260,7 +284,6 @@ export default function DashboardScreen() {
           });
           L.marker([${location.coords.latitude}, ${location.coords.longitude}], { icon: playerIcon }).addTo(map);
           
-          // --- ODKRYTE MIEJSCA ---
           ${JSON.stringify(discoveredPlaces)}.forEach(function(place) {
             var iconClass = 'custom-poi-icon' + (place.isCollected ? ' poi-collected' : '');
             var poiIcon = L.divIcon({
@@ -296,6 +319,7 @@ export default function DashboardScreen() {
     if (Platform.OS !== 'web') {
       return (
         <WebView
+          key={character?.class?.name || 'default-map'} 
           originWhitelist={['*']}
           source={{ html: mapHtml }}
           style={{ flex: 1, backgroundColor: '#27384e' }}
@@ -333,7 +357,6 @@ export default function DashboardScreen() {
         isSuccess: true,
         onConfirm: () => {
           setAlertVisible(false);
-          // Odśwież listę miejsc
           api.get('/places').then(res => setDiscoveredPlaces(res.data));
         }
       });
