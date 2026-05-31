@@ -2,9 +2,10 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Profile';
+import CustomAlert from '../../components/CustomAlerts'; // Upewnij się, że ścieżka jest dobra
 
 // --- INTERFEJSY ---
 interface Character {
@@ -38,7 +39,7 @@ interface CombatStats {
 interface UserProfile {
   username: string;
   email: string;
-  avatarUrl: string | null; // <-- Zmiana na null, żeby łatwiej obsłużyć lokalny plik
+  avatarUrl: string | null;
 }
 
 export default function PlayerProfile() {
@@ -49,12 +50,17 @@ export default function PlayerProfile() {
   const [history, setHistory] = useState<BattleHistory[]>([]);
   const [combatStats, setCombatStats] = useState<CombatStats | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // STAN DO ZARZĄDZANIA WIDOCZNOŚCIĄ HISTORII WALK
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
-
-  // LICZNIK KLIKNIĘĆ AWATARA (EASTER EGG)
   const [avatarClicks, setAvatarClicks] = useState(0);
+
+  // STANY DLA CUSTOM ALERT
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ 
+    title: '', 
+    message: '', 
+    isSuccess: true, 
+    onConfirm: undefined as (() => void) | undefined 
+  });
 
   const handleAvatarPress = () => {
     const nextClicks = avatarClicks + 1;
@@ -62,17 +68,19 @@ export default function PlayerProfile() {
 
     if (nextClicks >= 5) {
       setAvatarClicks(0);
-      if (Platform.OS === 'web') alert('🪄 Tryb deweloperski aktywowany!');
-      else Alert.alert('🛠️ Panel Programisty', 'Uzyskano dostęp do narzędzi administracyjnych.');
-      router.push('/(tabs)/developerPanel');
+      setAlertConfig({
+        title: '🛠️ PANEL PROGRAMISTY',
+        message: 'Uzyskano dostęp do narzędzi administracyjnych.',
+        isSuccess: true,
+        onConfirm: undefined // Ustawiamy na undefined, żeby nie było przycisków TAK/NIE
+      });
+      setAlertVisible(true);
     }
   };
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        console.log('Pobieranie danych z backendu...');
-        
         const [userRes, charRes, histRes] = await Promise.all([
           api.get('/auth/me').catch(() => null),
           api.get('/character').catch(() => null),
@@ -83,7 +91,7 @@ export default function PlayerProfile() {
           setProfile({
             username: userRes.data.username || 'Nieznany Wojownik',
             email: userRes.data.email || 'brak@email.com',
-            avatarUrl: userRes.data.avatarUrl || null, // <-- Usunięty ui-avatars
+            avatarUrl: userRes.data.avatarUrl || null,
           });
         }
 
@@ -96,7 +104,6 @@ export default function PlayerProfile() {
           setCombatStats(histRes.data.stats);
           setHistory(histRes.data.battles || []);
         }
-
       } catch (error) {
         console.error('❌ Błąd pobierania profilu:', error);
       } finally {
@@ -114,21 +121,21 @@ export default function PlayerProfile() {
       } else {
         await SecureStore.deleteItemAsync('userToken');
       }
+      setAlertVisible(false);
       router.replace('/(auth)/login');
     } catch (error) {
-      Alert.alert('Błąd', 'Nie udało się pomyślnie wylogować.');
+      console.error('Błąd wylogowania');
     }
   };
 
   const confirmLogout = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz się wylogować?')) handleLogout();
-    } else {
-      Alert.alert('Wylogowanie', 'Czy na pewno chcesz opuścić grę?', [
-        { text: 'Anuluj', style: 'cancel' },
-        { text: 'Wyloguj', style: 'destructive', onPress: handleLogout }
-      ]);
-    }
+    setAlertConfig({
+      title: 'Wylogowanie',
+      message: 'Czy na pewno chcesz opuścić grę?',
+      isSuccess: false,
+      onConfirm: handleLogout
+    });
+    setAlertVisible(true);
   };
 
   if (loading) {
@@ -162,14 +169,25 @@ export default function PlayerProfile() {
   };
 
   const displayedHistory = isHistoryExpanded ? history : history.slice(0, 5);
-
-  // Zabezpieczenie awatara gracza
-  const avatarSource = profile?.avatarUrl 
-    ? { uri: profile.avatarUrl } 
-    : require('@/assets/images/user-icon.png');
+  const avatarSource = profile?.avatarUrl ? { uri: profile.avatarUrl } : require('@/assets/images/user-icon.png');
 
   return (
     <SafeAreaView style={styles.container}>
+      <CustomAlert 
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        isSuccess={alertConfig.isSuccess}
+        onConfirm={alertConfig.onConfirm}
+        onClose={() => {
+          setAlertVisible(false);
+          // Nawigacja tylko jeśli to był alert dev panelu
+          if (alertConfig.title === '🛠️ PANEL PROGRAMISTY') {
+            router.push('/(tabs)/developerPanel');
+          }
+        }}
+      />
+
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/dashboard')}>
           <FontAwesome5 name="arrow-left" size={16} color="#ebd59b" />
@@ -187,23 +205,19 @@ export default function PlayerProfile() {
         contentContainerStyle={styles.flatListContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={<Text style={styles.emptyText}>Brak historii walk. Czas wyruszyć do lochów!</Text>}
-        
         ListHeaderComponent={
           <>
             {profile && (
               <View style={styles.headerCard}>
                 <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8} style={styles.avatarWrapper}>
-                  {/* Użycie nowej zmiennej avatarSource */}
                   <Image source={avatarSource} style={styles.avatar} />
                 </TouchableOpacity>
-
                 <View style={styles.headerInfo}>
                   <Text style={styles.username} numberOfLines={1}>{profile.username.toUpperCase()}</Text>
                   <Text style={styles.email} numberOfLines={1}>{profile.email}</Text>
                 </View>
               </View>
             )}
-
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
               <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
@@ -211,12 +225,10 @@ export default function PlayerProfile() {
                   <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
                   <Text style={[styles.levelText, { color: '#ebd59b', fontWeight: 'bold' }]}>Lv. {character.level}</Text>
                 </View>
-                
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                   <Text style={{ color: '#e74c3c', fontWeight: 'bold' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
                   <Text style={{ color: '#f1c40f', fontWeight: 'bold' }}>💰 Złoto: {character.gold}</Text>
                 </View>
-
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ color: '#8a94a6', fontWeight: 'bold' }}>⚔️ Atak: {character.attack}</Text>
                   <Text style={{ color: '#8a94a6', fontWeight: 'bold' }}>🛡️ Obrona: {character.defense}</Text>
@@ -225,7 +237,6 @@ export default function PlayerProfile() {
             ) : (
               <Text style={styles.emptyText}>Nie odnaleziono postaci w systemie.</Text>
             )}
-
             <Text style={[styles.sectionTitle, { marginTop: 10 }]}>📜 HISTORIA WALK</Text>
             {combatStats && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 15, backgroundColor: '#2a3642', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#a38450' }}>
@@ -236,20 +247,10 @@ export default function PlayerProfile() {
             )}
           </>
         }
-        
         ListFooterComponent={
           history.length > 5 ? (
             <TouchableOpacity 
-              style={{
-                backgroundColor: '#1d2631',
-                paddingVertical: 12,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: '#a38450',
-                alignItems: 'center',
-                marginTop: 10,
-                marginBottom: 20
-              }} 
+              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }} 
               onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
             >
               <Text style={{ color: '#ebd59b', fontWeight: 'bold', fontSize: 16 }}>

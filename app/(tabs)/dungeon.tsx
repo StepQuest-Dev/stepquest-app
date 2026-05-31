@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { styles } from '../../styles/tabs/Dungeon';
-import BottomNavBar from '../../components/BottomNavBar'; // Poprawiona nazwa importu
+import BottomNavBar from '../../components/BottomNavBar';
 import api from '../../services/api';
+import CustomAlert from '../../components/CustomAlerts'; // Import customowego alertu
 
 export default function DungeonScreen() {
   const router = useRouter();
   const [monsters, setMonsters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Stany dla CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: false });
 
   useEffect(() => {
     let isMounted = true;
@@ -21,7 +26,6 @@ export default function DungeonScreen() {
         console.log('✅ Udało się! Pobrano potwory:', response.data);
 
         if (isMounted) {
-          // Zabezpieczenie na wypadek, gdyby backend zwracał { data: [...] } zamiast czystej tablicy
           const enemiesList = Array.isArray(response.data) ? response.data : (response.data.data || []);
           setMonsters(enemiesList);
           setLoading(false);
@@ -30,7 +34,8 @@ export default function DungeonScreen() {
         console.error('❌ BŁĄD pobierania przeciwników:', error.response?.data || error.message);
         
         if (isMounted) {
-          Alert.alert('Błąd', 'Nie udało się połączyć z bazą bestii.');
+          setAlertConfig({ title: 'BŁĄD', message: 'Nie udało się połączyć z bazą bestii.', isSuccess: false });
+          setAlertVisible(true);
           setLoading(false);
         }
       }
@@ -42,7 +47,6 @@ export default function DungeonScreen() {
   }, []);
 
   const renderMonster = ({ item }: any) => {
-    // Brak imageUrl w bazie ładuje domyślny mroczny awatar
     const imageSource = item.imageUrl 
       ? { uri: item.imageUrl } 
       : require('@/assets/images/user-icon.png');
@@ -53,7 +57,6 @@ export default function DungeonScreen() {
         
         <View style={styles.monsterInfo}>
           <Text style={styles.monsterName}>{item.name}</Text>
-          {/* Wyświetla czyste statystyki pobrane bezpośrednio z backendu */}
           <Text style={styles.monsterStats}>Lv. {item.level} | ❤️ {item.hp} HP</Text>
         </View>
 
@@ -69,10 +72,19 @@ export default function DungeonScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#12181f' }}>
+      {/* UNIWERSALNY ALERT */}
+      <CustomAlert 
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        isSuccess={alertConfig.isSuccess}
+        onClose={() => setAlertVisible(false)}
+      />
+
       <View style={styles.container}>
         <View style={styles.headerContainer}>
           <Image source={require('@/assets/images/dungeon_icon.png')} style={styles.icon} resizeMode="contain" />
-          <Text style={styles.title}>💀 MROCZNE LOCHY 💀</Text>
+          <Text style={styles.title}>LABIRYNT ŚMIERCI💀</Text>
           <Text style={styles.subtitle}>Wybierz przeciwnika i wkrocz do walki!</Text>
         </View>
 
@@ -94,7 +106,6 @@ export default function DungeonScreen() {
         )}
       </View>
 
-      {/* Użycie poprawionego komponentu */}
       <BottomNavBar /> 
     </View>
   );
