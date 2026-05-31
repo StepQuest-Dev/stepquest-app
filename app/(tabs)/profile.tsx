@@ -181,38 +181,29 @@ export default function PlayerProfile() {
             
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
-              <>
-                {/* Karta istniejącej postaci */}
-                <TouchableOpacity 
-                  activeOpacity={0.7} 
-                  onPress={() => router.push('/(tabs)/CharacterScreen')}
-                >
-                  <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch', marginBottom: 10 }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
-                      <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
-                      <Text style={[styles.levelText, { color: '#ebd59b', fontWeight: 'bold' }]}>Lv. {character.level}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
-                      <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>⚔️ Atak: {character.attack}</Text>
-                      <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>🛡️ Obrona: {character.defense}</Text>
-                    </View>
+              // Karta istniejącej postaci - jedyny element w tym bloku warunku
+              <TouchableOpacity 
+                activeOpacity={0.7} 
+                onPress={() => router.push('/(tabs)/CharacterScreen')}
+                style={{ marginBottom: 20 }} // Dodany margines, aby oddzielić kartę od historii walk
+              >
+                <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
+                    <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
+                    <Text style={[styles.levelText, { color: '#ebd59b', fontWeight: 'bold' }]}>Lv. {character.level}</Text>
                   </View>
-                </TouchableOpacity>
-                
-                {/* Opcjonalny przycisk stworzenia KOLEJNEJ postaci (jeśli backend na to pozwala) */}
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#2a3642', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ebd59b', alignItems: 'center', marginBottom: 20 }}
-                  onPress={() => router.push('/(tabs)/CreateCharacter')}
-                >
-                  <Text style={{ color: '#ebd59b', fontWeight: 'bold', fontSize: 16, fontFamily: 'determination' }}>➕ STWÓRZ NOWĄ POSTAĆ</Text>
-                </TouchableOpacity>
-              </>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
+                    <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>⚔️ Atak: {character.attack}</Text>
+                    <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>🛡️ Obrona: {character.defense}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
             ) : (
-              // Przycisk tworzenia postaci, jeśli gracz nie posiada żadnej
+              // Przycisk tworzenia postaci, widoczny TYLKO jeśli gracz nie posiada żadnej
               <View style={{ alignItems: 'center', marginVertical: 20 }}>
                 <Text style={styles.emptyText}>Nie posiadasz jeszcze wojownika.</Text>
                 <TouchableOpacity 
