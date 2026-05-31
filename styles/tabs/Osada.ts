@@ -75,6 +75,10 @@ export const styles = StyleSheet.create({
     bottom: height * 0.49, 
     left: width * 0.03 
   },
+  guild: {
+    bottom: height * 0.33,
+    right: width * 0.15
+  },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.8)',
