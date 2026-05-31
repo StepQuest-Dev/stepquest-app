@@ -17,7 +17,12 @@ export default function RegisterScreen() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const handleRegister = async () => {
-    console.log('🚀 Kliknięto zarejestruj! Dane:', { email, username, password });
+    // --- POPRAWKA: Ukrywamy prawdziwe hasło w logach (Maskowanie) ---
+    console.log('🚀 Kliknięto zarejestruj! Dane:', { 
+      email, 
+      username, 
+      password: '***' // <-- Nie logujemy już surowego hasła!
+    });
 
     if (!email || !username || !password) {
       const msg = 'Uzupełnij wszystkie pola!';
@@ -61,7 +66,6 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Kontener wyśrodkowujący logo StepQuest */}
       <View style={styles.logoContainer}>
         <Image
           source={require('@/assets/images/logo.png')} 
@@ -72,7 +76,6 @@ export default function RegisterScreen() {
 
       <Text style={styles.header}>DOŁĄCZ DO STEPQUEST</Text>
 
-      {/* Dynamiczne pola tekstowe ze zintegrowanym placeholderem dostosowanym do systemu */}
       <StyledTextInput
         style={styles.input}
         placeholder="E-mail"
@@ -90,11 +93,9 @@ export default function RegisterScreen() {
         autoCapitalize="none"
       />
 
-      {/* --- HASŁO Z "OCZKIEM" (NAPRAWIONY WYGLĄD) --- */}
-      {/* Kontener otrzymuje style inputu (kolor, ramka), ale bez wewnętrznych marginesów */}
+      {/* HASŁO Z "OCZKIEM" */}
       <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', padding: 0, paddingHorizontal: 0, paddingVertical: 0 }]}>
         <StyledTextInput
-          // Sam tekst jest przezroczysty i nie ma swoich ramek, żeby wtopić się w kontener
           style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0, backgroundColor: 'transparent' }]}
           placeholder="Hasło"
           value={password}
@@ -113,7 +114,6 @@ export default function RegisterScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Uniwersalny przycisk działający na Web i Mobile */}
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleRegister}
