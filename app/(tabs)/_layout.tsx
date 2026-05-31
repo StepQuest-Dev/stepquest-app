@@ -14,6 +14,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="osada" />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="developerPanel" options={{ href: null }} />
+      <Tabs.Screen name="CharacterScreen" options={{ href: null }} />
+      <Tabs.Screen name="CreateCharacter" options={{ href: null }} />
     </Tabs>
   );
 }
