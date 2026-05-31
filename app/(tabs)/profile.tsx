@@ -14,7 +14,7 @@ interface BattleHistory { id: string; status: 'WON' | 'LOST'; createdAt: string;
 interface CombatStats { won: number; lost: number; total: number; }
 interface UserProfile { username: string; email: string; avatarUrl: string | null; }
 
-// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
+// --- FUNKCJE POMOCNICZE ---
 const getCharacterAvatar = (className?: string) => {
   if (!className) return require('@/assets/images/user-icon.png');
   switch (className.toLowerCase()) {
@@ -23,6 +23,16 @@ const getCharacterAvatar = (className?: string) => {
     case 'czarnoksiężnik':
     case 'mag': return require('@/assets/images/mag-icon.png');
     case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    default: return require('@/assets/images/user-icon.png');
+  }
+};
+
+const getUserAvatar = (avatarUrl?: string | null) => {
+  switch (avatarUrl) {
+    case 'warrior-icon.png': return require('@/assets/images/warrior-icon.png');
+    case 'mnich-icon.png': return require('@/assets/images/mnich-icon.png');
+    case 'mag-icon.png': return require('@/assets/images/mag-icon.png');
+    case 'loczek-icon.png': return require('@/assets/images/loczek-icon.png');
     default: return require('@/assets/images/user-icon.png');
   }
 };
@@ -147,9 +157,8 @@ export default function PlayerProfile() {
 
   const displayedHistory = isHistoryExpanded ? history : history.slice(0, 5);
   
-  const avatarSource = character?.class?.name 
-    ? getCharacterAvatar(character.class.name) 
-    : (profile?.avatarUrl ? { uri: profile.avatarUrl } : require('@/assets/images/user-icon.png'));
+  // --- ZMIANA: Używamy nowej metody getUserAvatar dla głównego konta ---
+  const userAvatarSource = getUserAvatar(profile?.avatarUrl);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -183,27 +192,30 @@ export default function PlayerProfile() {
         ListEmptyComponent={<Text style={styles.emptyText}>Brak historii walk. Czas wyruszyć do lochów!</Text>}
         ListHeaderComponent={
           <>
+            {/* SEKCJA KONT UŻYTKOWNIKA - Avatar wybrany w ustawieniach */}
             {profile && (
-              <View style={styles.headerCard}>
-                <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8} style={styles.avatarWrapper}>
-                  <Image source={avatarSource} style={styles.avatar} />
-                </TouchableOpacity>
-                <View style={styles.headerInfo}>
-                  <Text style={styles.username} numberOfLines={1}>{profile.username.toUpperCase()}</Text>
-                  <Text style={styles.email} numberOfLines={1}>{profile.email}</Text>
+              <View style={[styles.headerCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8} style={styles.avatarWrapper}>
+                    <Image source={userAvatarSource} style={styles.avatar} />
+                  </TouchableOpacity>
+                  <View style={[styles.headerInfo, { flex: 1, marginRight: 10 }]}>
+                    <Text style={styles.username} numberOfLines={1}>{profile.username.toUpperCase()}</Text>
+                    <Text style={styles.email} numberOfLines={1}>{profile.email}</Text>
+                  </View>
                 </View>
+                <TouchableOpacity style={{ padding: 10 }} onPress={() => router.push('/(tabs)/settings')}>
+                  <FontAwesome5 name="cog" size={24} color="#ebd59b" />
+                </TouchableOpacity>
               </View>
             )}
 
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push('/(tabs)/CharacterScreen')}
-                style={{ marginBottom: 20 }}
-              >
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(tabs)/CharacterScreen')} style={{ marginBottom: 20 }}>
                 <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
-                  {/* --- POPRAWKA: Używamy styles.avatarWrapper z marginesem --- */}
+                  
+                  {/* SEKCJA POSTACI - Avatar przypisany do klasy postaci */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
                     <View style={[styles.avatarWrapper, { marginRight: 15 }]}>
                       <Image 
