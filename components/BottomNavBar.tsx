@@ -44,9 +44,13 @@ export default function BottomNav() {
       <View style={styles.navDivider} />
 
       {/* --- OSADA --- */}
-      <TouchableOpacity style={styles.navTab} onPress={() => alert('Osada wkrótce!')}>
+      <TouchableOpacity 
+        style={[styles.navTab, pathname === '/osada' && styles.activeNavTab]} 
+        onPress={() => router.push('/(tabs)/osada')}
+      >
         <Image source={require('@/assets/images/osada.png')} style={styles.navImage} resizeMode="contain" />
-        <Text style={styles.navText}>OSADA</Text>
+        <Text style={[styles.navText, pathname === '/osada' && styles.activeNavText]}>OSADA</Text>
+        {pathname === '/osada' && <View style={styles.activeIndicator} />}
       </TouchableOpacity>
 
     </View>

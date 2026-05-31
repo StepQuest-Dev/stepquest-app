@@ -16,6 +16,7 @@ export default function DashboardScreen() {
   const [username, setUsername] = useState('');
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
 
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -85,7 +86,16 @@ export default function DashboardScreen() {
           if (isActive) setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
         } catch (e) { }
       };
+
+      const fetchPlaces = async () => {
+        try {
+          const res = await api.get('/places');
+          if (isActive) setDiscoveredPlaces(res.data);
+        } catch (e) { }
+      };
+
       fetchLatestSteps();
+      fetchPlaces();
       return () => { isActive = false; };
     }, [])
   );
@@ -179,29 +189,124 @@ export default function DashboardScreen() {
       );
     }
     const userIconUri = Image.resolveAssetSource(require('@/assets/images/user-icon.png')).uri;
+    
     const mapHtml = `
       <!DOCTYPE html>
       <html>
-      <head><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <style>body{padding:0;margin:0;background-color:#12181f}#map{width:100%;height:100vh}.leaflet-layer{filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)}.custom-player-icon{border-radius:25%;background-color:#2a3642;box-shadow:2px 2px 4px rgba(0,0,0,0.8);object-fit:cover;}</style></head>
-      <body><div id="map"></div><script>
-      var map=L.map('map',{zoomControl:false}).setView([${location.coords.latitude},${location.coords.longitude}],16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-      var playerIcon=L.icon({iconUrl:'${userIconUri}',iconSize:[40,40],iconAnchor:[20,20],className:'custom-player-icon'});
-      L.marker([${location.coords.latitude},${location.coords.longitude}],{icon:playerIcon}).addTo(map);
-      map.on('click',function(){window.ReactNativeWebView.postMessage('toggle_nav');});
-      </script></body></html>
+      <style>
+        body { padding: 0; margin: 0; background-color: #43688b; }
+        #map { width: 100%; height: 100vh; }
+        
+        /* ZWIĘKSZONO JASNOŚĆ: brightness zmienione z 95% na 120% */
+        .leaflet-layer {
+          filter: invert(100%) hue-rotate(180deg) brightness(250%) contrast(80%);
+        }
+        
+        .custom-player-icon {
+          border-radius: 25%;
+          background-color: #2a3642;
+          box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+          object-fit: cover;
+        }
+
+        .custom-poi-icon {
+          font-size: 24px;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .poi-collected {
+          filter: grayscale(100%) brightness(70%);
+          opacity: 0.6;
+        }
+
+        .popup-btn {
+          background-color: #a38450;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          font-family: sans-serif;
+          font-weight: bold;
+          cursor: pointer;
+          margin-top: 5px;
+          width: 100%;
+        }
+      </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', { zoomControl: false }).setView([${location.coords.latitude}, ${location.coords.longitude}], 16);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          }).addTo(map);
+          
+          var playerIcon = L.icon({
+            iconUrl: '${userIconUri}',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+            className: 'custom-player-icon'
+          });
+          L.marker([${location.coords.latitude}, ${location.coords.longitude}], { icon: playerIcon }).addTo(map);
+          
+          // --- ODKRYTE MIEJSCA ---
+          ${JSON.stringify(discoveredPlaces)}.forEach(function(place) {
+            var iconClass = 'custom-poi-icon' + (place.isCollected ? ' poi-collected' : '');
+            var poiIcon = L.divIcon({
+              html: place.isCollected ? '🚩' : '🏰',
+              className: iconClass,
+              iconSize: [30, 30],
+              iconAnchor: [15, 15]
+            });
+
+            var marker = L.marker([place.lat, place.lon], { icon: poiIcon }).addTo(map);
+            
+            var popupContent = '<div style="text-align:center"><b style="color:#000">' + place.name + '</b><br/>';
+            if (!place.isCollected) {
+              popupContent += '<button class="popup-btn" onclick="window.ReactNativeWebView.postMessage(\\\'collect_place:' + place.id + '\\\')">ZBIERZ NAGRODĘ</button>';
+            } else {
+              popupContent += '<small style="color:#666">Miejsce odwiedzone</small>';
+            }
+            popupContent += '</div>';
+            
+            marker.bindPopup(popupContent);
+          });
+
+          map.on('click', function(e) {
+            if (e.originalEvent.target.id === 'map') {
+              window.ReactNativeWebView.postMessage('toggle_nav');
+            }
+          });
+        </script>
+      </body>
+      </html>
     `;
+
     if (Platform.OS !== 'web') {
       return (
         <WebView
           originWhitelist={['*']}
           source={{ html: mapHtml }}
-          style={{ flex: 1, backgroundColor: '#171f2a' }}
+          style={{ flex: 1, backgroundColor: '#27384e' }}
           scrollEnabled={false}
-          onMessage={(e) => { if(e.nativeEvent.data === 'toggle_nav') setIsNavVisible(!isNavVisible) }}
+          onMessage={(e) => { 
+            const msg = e.nativeEvent.data;
+            if (msg === 'toggle_nav') {
+              setIsNavVisible(!isNavVisible);
+            } else if (msg.startsWith('collect_place:')) {
+              const placeId = msg.split(':')[1];
+              handleCollectPlace(placeId);
+            }
+          }}
         />
       );
     }
@@ -211,6 +316,37 @@ export default function DashboardScreen() {
       </TouchableOpacity>
     );
   };
+
+  const handleCollectPlace = async (placeId: string) => {
+    if (!location) return;
+    try {
+      const res = await api.post(`/places/collect/${placeId}`, {
+        lat: location.coords.latitude,
+        lon: location.coords.longitude
+      });
+      
+      setAlertConfig({
+        title: '🏆 MIEJSCE ODWIEDZONE',
+        message: `Gratulacje! Odwiedziłeś "${res.data.placeName}".\n\nNagrody:\n⭐ ${res.data.rewards.exp} EXP\n💰 ${res.data.rewards.gold} Złota`,
+        isSuccess: true,
+        onConfirm: () => {
+          setAlertVisible(false);
+          // Odśwież listę miejsc
+          api.get('/places').then(res => setDiscoveredPlaces(res.data));
+        }
+      });
+      setAlertVisible(true);
+    } catch (err: any) {
+      setAlertConfig({
+        title: '⚠️ ZA DALEKO',
+        message: err.response?.data?.message || 'Nie udało się zebrać nagrody.',
+        isSuccess: false,
+        onConfirm: undefined
+      });
+      setAlertVisible(true);
+    }
+  };
+
 
   return (
     <View style={styles.container}>

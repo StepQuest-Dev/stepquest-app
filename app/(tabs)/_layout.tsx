@@ -11,6 +11,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="dungeon" />
+      <Tabs.Screen name="osada" />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="developerPanel" options={{ href: null }} />
     </Tabs>
