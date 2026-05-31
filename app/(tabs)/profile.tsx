@@ -1,8 +1,8 @@
 import { FontAwesome5 } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useState } from 'react';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'; 
-import { useNavigation } from '@react-navigation/native';
 import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
@@ -140,8 +140,8 @@ export default function PlayerProfile() {
       <CustomAlert visible={alertVisible} title={alertConfig.title} message={alertConfig.message} isSuccess={alertConfig.isSuccess} onConfirm={alertConfig.onConfirm} onClose={() => setAlertVisible(false)} showCancel={true} />
 
       <View style={styles.topBar}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => {
             if (fromPath) {
               router.push(fromPath as any);
@@ -178,19 +178,19 @@ export default function PlayerProfile() {
                 </View>
               </View>
             )}
-            
+
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
               // Karta istniejącej postaci - jedyny element w tym bloku warunku
-              <TouchableOpacity 
-                activeOpacity={0.7} 
+              <TouchableOpacity
+                activeOpacity={0.7}
                 onPress={() => router.push('/(tabs)/CharacterScreen')}
                 style={{ marginBottom: 20 }} // Dodany margines, aby oddzielić kartę od historii walk
               >
                 <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
                     <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
-                    <Text style={[styles.levelText, { color: '#ebd59b', fontWeight: 'bold' }]}>Lv. {character.level}</Text>
+                    <Text style={[styles.levelText, { color: '#ebd59b', fontFamily: 'determination' }]}>Lv. {character.level}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                     <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
@@ -206,7 +206,7 @@ export default function PlayerProfile() {
               // Przycisk tworzenia postaci, widoczny TYLKO jeśli gracz nie posiada żadnej
               <View style={{ alignItems: 'center', marginVertical: 20 }}>
                 <Text style={styles.emptyText}>Nie posiadasz jeszcze wojownika.</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={{ backgroundColor: '#2a3642', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#ebd59b', marginTop: 10, width: '100%', alignItems: 'center' }}
                   onPress={() => router.push('/(tabs)/CreateCharacter')}
                 >
@@ -227,8 +227,8 @@ export default function PlayerProfile() {
         }
         ListFooterComponent={
           history.length > 5 ? (
-            <TouchableOpacity 
-              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }} 
+            <TouchableOpacity
+              style={{ backgroundColor: '#1d2631', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center', marginTop: 10, marginBottom: 20 }}
               onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
             >
               <Text style={{ color: '#ebd59b', fontWeight: 'bold', fontSize: 16 }}>

@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,24 +56,23 @@ export const styles = StyleSheet.create({
   plaqueText: {
     color: '#ebd59b',
     fontSize: 11,
-    fontWeight: 'bold',
     letterSpacing: 1,
     fontFamily: 'determination',
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 1,
   },
-  hut: { 
-    top: height * 0.18, 
-    left: width * 0.1 
+  hut: {
+    top: height * 0.18,
+    left: width * 0.1
   },
-  barracks: { 
-    top: height * 0.39, 
-    right: width * 0.03 
+  barracks: {
+    top: height * 0.39,
+    right: width * 0.03
   },
-  workshop: { 
-    bottom: height * 0.49, 
-    left: width * 0.03 
+  workshop: {
+    bottom: height * 0.49,
+    left: width * 0.03
   },
   guild: {
     bottom: height * 0.33,
@@ -105,25 +104,24 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'determination'
   },
-  modalEmoji: { 
-    fontSize: 60, 
-    marginBottom: 15 
+  modalEmoji: {
+    fontSize: 60,
+    marginBottom: 15
   },
-  modalName: { 
-    color: '#ebd59b', 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    fontFamily: 'determination' 
+  modalName: {
+    color: '#ebd59b',
+    fontSize: 22,
+    marginBottom: 10,
+    fontFamily: 'determination'
   },
-  modalDialog: { 
-    color: '#c9d1d9', 
-    fontSize: 14, 
-    fontStyle: 'italic', 
-    textAlign: 'center', 
-    lineHeight: 22, 
-    marginBottom: 25, 
-    fontFamily: 'determination' 
+  modalDialog: {
+    color: '#c9d1d9',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 25,
+    fontFamily: 'determination'
   },
   modalActionBtn: {
     width: '100%',
@@ -131,15 +129,25 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  modalActionText: { 
-    color: '#fff', 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    letterSpacing: 1, 
-    fontFamily: 'determination' 
+  modalActionText: {
+    color: '#fff',
+    fontSize: 16,
+    letterSpacing: 1,
+    fontFamily: 'determination'
   },
-  disabledBtn: { 
-    backgroundColor: '#30363d', 
-    opacity: 0.5 
+  disabledBtn: {
+    backgroundColor: '#30363d',
+    opacity: 0.5
+  },
+  modalImage: {
+    width: 64,
+    height: 64,
+    marginBottom: 10,
+    alignSelf: 'center', // Żeby obrazek był wyśrodkowany
+  },
+  plaqueImage: {
+    width: 16,
+    height: 16,
+    marginRight: 6,
   },
 });
