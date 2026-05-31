@@ -9,11 +9,11 @@ import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dashboard';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
+import TopStatusOverlay from '../../components/TopStatusOverlay';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [username, setUsername] = useState('');
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
@@ -107,11 +107,6 @@ export default function DashboardScreen() {
 
     const fetchDashboardAndStartPedometer = async () => {
       try {
-        addLog('Uderzam do NestJS po dane profilu...');
-        const userResponse = await api.get('/auth/me');
-        if (isMounted) setUsername(userResponse.data.username || userResponse.data.email);
-        addLog('✅ Zalogowano wojownika: ' + (userResponse.data.username || userResponse.data.email).toUpperCase());
-
         addLog('Żądanie uprawnień do lokalizacji satelitarnej...');
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
         if (gpsStatus === 'granted') {
@@ -361,23 +356,7 @@ export default function DashboardScreen() {
 
       <View style={styles.mapContainer}>{renderMapArea()}</View>
 
-      <View style={styles.topOverlay} pointerEvents="box-none">
-        <View style={styles.profileHeader}>
-          <TouchableOpacity style={styles.avatarPlaceholder} onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.7}>
-            <Image source={require('@/assets/images/user-icon.png')} style={styles.avatarImage} resizeMode="cover" />
-          </TouchableOpacity>
-          <View style={styles.profileInfo}>
-            <Text style={styles.usernameText} numberOfLines={1}>{username.toUpperCase()}</Text>
-          </View>
-          <TouchableOpacity style={styles.stepCoinsContainer} onPress={openSyncAlert} activeOpacity={0.7}>
-            <View style={styles.coinsRow}>
-              <Image source={require('@/assets/images/coins.png')} style={styles.coinImage} resizeMode="contain" />
-              <Text style={styles.coinsValue}>{steps.toLocaleString()}</Text>
-            </View>
-            <Text style={styles.coinsLabel}>STEP COINS</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
 
       {isNavVisible && <BottomNavBar/>}
     </View>
