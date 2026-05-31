@@ -7,7 +7,7 @@ import { WebView } from 'react-native-webview';
 import GameDiagnostics from '../../components/GameDiagnostics';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dashboard';
-import BottomNav from '../../components/BottomNavBar';
+import BottomNavBar from '../../components/BottomNavBar';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -325,7 +325,7 @@ export default function DashboardScreen() {
 
       {/* 3. DOLNA NAKŁADKA (NAWIGACJA Z LOCHAMI) */}
       {isNavVisible && (
-       <BottomNav />
+       <BottomNavBar/>
       )}
 
     </View>

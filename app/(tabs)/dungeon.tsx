@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { styles } from '../../styles/tabs/Dungeon';
-import BottomNav from '../../components/BottomNavBar';
+import BottomNavBar from '../../components/BottomNavBar'; // Poprawiona nazwa importu
 import api from '../../services/api';
 
 export default function DungeonScreen() {
@@ -15,34 +15,22 @@ export default function DungeonScreen() {
 
     const fetchEnemies = async () => {
       try {
-        console.log('Uderzam do bazy (tabela Enemy) po listę potworów...');
+        console.log('Pobieram potwory z /api/v1/enemies ...');
+        const response = await api.get('/enemies'); 
         
-        // TUTAJ WSTAWIAMY ENDPOINT OD BACKENDOWCA.
-        // Zakładam '/enemies', ale jeśli to '/combat/enemies' lub '/api/v1/enemies', podmień to!
-        const response = await api.get('api/v1/enemies'); 
-        
-        console.log('✅ Odpowiedź z serwera (Potwory):', response.data);
+        console.log('✅ Udało się! Pobrano potwory:', response.data);
 
         if (isMounted) {
-          // Zabezpieczenie: czasami backend wysyła dane w obiekcie { data: [...] } zamiast od razu w tablicy [...]
+          // Zabezpieczenie na wypadek, gdyby backend zwracał { data: [...] } zamiast czystej tablicy
           const enemiesList = Array.isArray(response.data) ? response.data : (response.data.data || []);
-          
           setMonsters(enemiesList);
           setLoading(false);
         }
       } catch (error: any) {
-        console.error('❌ BŁĄD pobierania przeciwników!');
+        console.error('❌ BŁĄD pobierania przeciwników:', error.response?.data || error.message);
         
-        // Ten kod wyciągnie dokładną przyczynę błędu z backendu i wypisze w terminalu
-        if (error.response) {
-          console.error('Kod błędu:', error.response.status);
-          console.error('Szczegóły błędu:', error.response.data);
-        } else {
-          console.error('Komunikat błędu:', error.message);
-        }
-
         if (isMounted) {
-          Alert.alert('Błąd', 'Nie udało się połączyć z lochami.');
+          Alert.alert('Błąd', 'Nie udało się połączyć z bazą bestii.');
           setLoading(false);
         }
       }
@@ -54,8 +42,7 @@ export default function DungeonScreen() {
   }, []);
 
   const renderMonster = ({ item }: any) => {
-    // Jeśli z bazy przychodzi URL obrazka (np. item.imageUrl), używamy go. 
-    // W przeciwnym razie wstawiamy domyślny awatar potwora.
+    // Brak imageUrl w bazie ładuje domyślny mroczny awatar
     const imageSource = item.imageUrl 
       ? { uri: item.imageUrl } 
       : require('@/assets/images/user-icon.png');
@@ -66,8 +53,8 @@ export default function DungeonScreen() {
         
         <View style={styles.monsterInfo}>
           <Text style={styles.monsterName}>{item.name}</Text>
-          {/* Zabezpieczenie na wypadek, gdyby z bazy wracały np. zmienne 'maxHp' zamiast 'hp' */}
-          <Text style={styles.monsterStats}>Lv. {item.level || 1} | ❤️ {item.hp || item.maxHp || '?'} HP</Text>
+          {/* Wyświetla czyste statystyki pobrane bezpośrednio z backendu */}
+          <Text style={styles.monsterStats}>Lv. {item.level} | ❤️ {item.hp} HP</Text>
         </View>
 
         <TouchableOpacity 
@@ -94,11 +81,10 @@ export default function DungeonScreen() {
         ) : (
           <FlatList
             data={monsters}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => (item.id || item._id).toString()}
             renderItem={renderMonster}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
-            // Komunikat, gdyby baza potworów była pusta
             ListEmptyComponent={
               <Text style={{ color: '#8a94a6', textAlign: 'center', marginTop: 20 }}>
                 Lochy są obecnie puste... Wszystkie potwory zostały pokonane.
@@ -108,8 +94,8 @@ export default function DungeonScreen() {
         )}
       </View>
 
-      {/* Pasek nawigacji zostaje na dole */}
-      <BottomNav />
+      {/* Użycie poprawionego komponentu */}
+      <BottomNavBar /> 
     </View>
   );
 }

@@ -12,14 +12,14 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold', 
     color: '#e74c3c', 
     textAlign: 'center', 
-    marginBottom: 10, 
+    marginBottom: 5, 
     letterSpacing: 2 
   },
   turn: { 
     color: '#ebd59b', 
     fontSize: 18, 
     textAlign: 'center', 
-    marginBottom: 40 
+    marginBottom: 30 
   },
   text: { 
     color: '#8a94a6', 
@@ -30,34 +30,51 @@ export const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 50 
+    marginBottom: 40 
   },
   statBox: { 
     backgroundColor: '#1d2631', 
-    padding: 20, 
-    borderRadius: 8, 
+    paddingVertical: 15,
+    paddingHorizontal: 10, 
+    borderRadius: 12, 
     borderWidth: 2, 
     borderColor: '#a38450', 
     flex: 1, 
-    alignItems: 'center' 
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#ebd59b',
+    marginBottom: 10,
+    backgroundColor: '#2a3642'
   },
   statName: { 
     color: '#ebd59b', 
     fontSize: 16, 
     fontWeight: 'bold', 
-    marginBottom: 10, 
+    marginBottom: 5, 
     textAlign: 'center' 
+  },
+  hpContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   hpText: { 
     color: '#e74c3c', 
-    fontSize: 22, 
-    fontWeight: 'bold' 
+    fontSize: 18, 
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
   vs: { 
     color: '#8a94a6', 
-    fontSize: 20, 
+    fontSize: 24, 
     fontWeight: 'bold', 
-    marginHorizontal: 10 
+    marginHorizontal: 15 
   },
   actionTitle: { 
     color: '#8a94a6', 
