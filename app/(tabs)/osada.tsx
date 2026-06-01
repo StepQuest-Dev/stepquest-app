@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
