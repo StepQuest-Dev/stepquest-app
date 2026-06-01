@@ -209,7 +209,7 @@ export default function OsadaScreen() {
   };
   return (
     <ImageBackground
-      source={require('@/assets/images/osada_bg.png')}
+      source={require('@/assets/images/osada_bg.gif')}
       style={styles.container}
       imageStyle={styles.bgImage}
       resizeMode="cover"

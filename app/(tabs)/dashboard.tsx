@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Asset } from 'expo-asset';
 import { WebView } from 'react-native-webview';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
@@ -10,14 +11,13 @@ import TopStatusOverlay from '../../components/TopStatusOverlay';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dashboard';
 
-// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
-const getCharacterAvatar = (className?: string) => {
-  if (!className) return require('@/assets/images/user-icon.png');
-  switch (className.toLowerCase()) {
-    case 'wojownik': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
-    case 'mnich': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
-    case 'czarnoksiężnik': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
-    case 'zwiadowca': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
+// --- FUNKCJA POMOCNICZA DO AWATARU UŻYTKOWNIKA (Zgodna z TopStatusOverlay) ---
+const getUserAvatar = (avatarUrl?: string | null) => {
+  switch (avatarUrl) {
+    case 'warrior-icon.png': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+    case 'mnich-icon.png': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+    case 'mag-icon.png': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+    case 'loczek-icon.png': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
     default: return require('@/assets/images/user-icon.png');
   }
 };
@@ -29,6 +29,7 @@ export default function DashboardScreen() {
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
 
   const [character, setCharacter] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -60,25 +61,28 @@ export default function DashboardScreen() {
     useCallback(() => {
       let isActive = true;
 
-      const fetchPlaces = async () => {
+      const fetchData = async () => {
         try {
-          const res = await api.get('/places');
-          if (isActive) setDiscoveredPlaces(res.data);
-        } catch (e) { }
-      };
+          const [userRes, charRes, placesRes] = await Promise.all([
+            api.get('/auth/me').catch(() => null),
+            api.get('/character').catch(() => null),
+            api.get('/places').catch(() => null),
+          ]);
 
-      const fetchCharacter = async () => {
-        try {
-          const res = await api.get('/character');
-          if (isActive && res.data) {
-            const charData = Array.isArray(res.data) ? res.data[0] : res.data;
-            setCharacter(charData);
+          if (isActive) {
+            if (userRes?.data) setUserProfile(userRes.data);
+            if (charRes?.data) {
+              const charData = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
+              setCharacter(charData);
+            }
+            if (placesRes?.data) setDiscoveredPlaces(placesRes.data);
           }
-        } catch (e) { }
+        } catch (e) {
+          console.error('[DASHBOARD] Fetch error:', e);
+        }
       };
 
-      fetchPlaces();
-      fetchCharacter();
+      fetchData();
       return () => { isActive = false; };
     }, [])
   );
@@ -136,11 +140,14 @@ export default function DashboardScreen() {
       );
     }
 
-    const userIconSource = getCharacterAvatar(character?.class?.name);
+    // Używamy awatara z profilu użytkownika (avatarUrl)
+    const userIconSource = getUserAvatar(userProfile?.avatarUrl);
 
     let userIconUri = '';
     try {
-      userIconUri = Image.resolveAssetSource(userIconSource).uri;
+      const asset = Asset.fromModule(userIconSource);
+      userIconUri = asset.uri;
+      console.log(`[MAP] Player Marker URI: ${userIconUri}`);
     } catch (e) {
       userIconUri = typeof userIconSource === 'string' ? userIconSource : '';
     }
@@ -160,13 +167,12 @@ export default function DashboardScreen() {
           filter: invert(100%) hue-rotate(180deg) brightness(250%) contrast(80%);
         }
         
-        /* --- DODANA ZŁOTA RAMKA Z CSS --- */
         .custom-player-icon {
-          border-radius: 8px; /* Lekkie zaokrąglenie dla estetyki */
-          background-color: #2a3642; /* Tło pod ikonką, na wypadek gdyby miała przezroczystość */
-          //border: 2px solid #a38450; /* Złoty border RPG */
+          border-radius: 8px;
+          background-color: #2a3642;
+          border: 2px solid #a38450;
           box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-          object-fit: cover;
+          overflow: hidden;
         }
 
         .custom-poi-icon {
@@ -247,13 +253,18 @@ export default function DashboardScreen() {
     `;
 
     if (Platform.OS !== 'web') {
+      // Klucz WebView uwzględnia avatarUrl i nazwisko, aby wymusić przeładowanie przy zmianie profilu
+      const webViewKey = `map-${userProfile?.avatarUrl || 'none'}-${character?.class?.id || 'none'}`;
+      
       return (
         <WebView
-          key={character?.class?.name || 'default-map'}
+          key={webViewKey}
           originWhitelist={['*']}
           source={{ html: mapHtml }}
           style={{ flex: 1, backgroundColor: '#27384e' }}
           scrollEnabled={false}
+          allowFileAccess={true}
+          allowUniversalAccessFromFileURLs={true}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
             if (msg === 'toggle_nav') {
