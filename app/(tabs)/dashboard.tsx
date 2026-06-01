@@ -1,8 +1,8 @@
 import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Asset } from 'expo-asset';
 import { WebView } from 'react-native-webview';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
@@ -11,14 +11,13 @@ import TopStatusOverlay from '../../components/TopStatusOverlay';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dashboard';
 
-// --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
-const getCharacterAvatar = (className?: string) => {
-  if (!className) return require('@/assets/images/user-icon.png');
-  switch (className.toLowerCase()) {
-    case 'wojownik': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
-    case 'mnich': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
-    case 'czarnoksiężnik': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
-    case 'zwiadowca': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
+// --- FUNKCJA POMOCNICZA DO AWATARU UŻYTKOWNIKA (Zgodna z TopStatusOverlay) ---
+const getUserAvatar = (avatarUrl?: string | null) => {
+  switch (avatarUrl) {
+    case 'warrior-icon.png': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+    case 'mnich-icon.png': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+    case 'mag-icon.png': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+    case 'loczek-icon.png': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
     default: return require('@/assets/images/user-icon.png');
   }
 };
@@ -26,11 +25,11 @@ const getCharacterAvatar = (className?: string) => {
 export default function DashboardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
 
   const [character, setCharacter] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -58,79 +57,40 @@ export default function DashboardScreen() {
     setCurrentStatus(msg);
   };
 
-  const syncStepsWithServer = async (currentSteps: number) => {
-    // Backend wymaga liczby całkowitej dodatniej (@IsInt, @IsPositive)
-    const validCount = Math.floor(currentSteps);
-    if (validCount <= 0) return; 
-
-    try {
-      await api.post('/steps', { count: validCount });
-      setAlertConfig({
-        title: '🛡️ SYNCHRONIZACJA',
-        message: 'Kroki zostały pomyślnie zapisane w chmurze!',
-        isSuccess: true,
-        onConfirm: undefined
-      });
-      setAlertVisible(true);
-    } catch (err) {
-      console.error('Błąd synchronizacji kroków:', err);
-    }
-  };
-
-  const openSyncAlert = () => {
-    setAlertConfig({
-      title: '🛡️ SYNCHRONIZACJA',
-      message: `Czy chcesz przymusowo zsynchronizować zebrane ${steps} kroków z bazą danych?`,
-      isSuccess: false,
-      onConfirm: () => {
-        setAlertVisible(false);
-        syncStepsWithServer(steps);
-      }
-    });
-    setAlertVisible(true);
-  };
-
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      const fetchLatestSteps = async () => {
-        try {
-          const res = await api.get('/steps/latest');
-          const serverSteps = res.data?.steps || res.data?.count || res.data?.totalSteps || 0;
-          if (isActive) setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
-        } catch (e) { }
-      };
 
-      const fetchPlaces = async () => {
+      const fetchData = async () => {
         try {
-          const res = await api.get('/places');
-          if (isActive) setDiscoveredPlaces(res.data);
-        } catch (e) { }
-      };
+          const [userRes, charRes, placesRes] = await Promise.all([
+            api.get('/auth/me').catch(() => null),
+            api.get('/character').catch(() => null),
+            api.get('/places').catch(() => null),
+          ]);
 
-      const fetchCharacter = async () => {
-        try {
-          const res = await api.get('/character');
-          if (isActive && res.data) {
-            const charData = Array.isArray(res.data) ? res.data[0] : res.data;
-            setCharacter(charData);
+          if (isActive) {
+            if (userRes?.data) setUserProfile(userRes.data);
+            if (charRes?.data) {
+              const charData = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
+              setCharacter(charData);
+            }
+            if (placesRes?.data) setDiscoveredPlaces(placesRes.data);
           }
-        } catch (e) { }
+        } catch (e) {
+          console.error('[DASHBOARD] Fetch error:', e);
+        }
       };
 
-      fetchLatestSteps();
-      fetchPlaces();
-      fetchCharacter();
+      fetchData();
       return () => { isActive = false; };
     }, [])
   );
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
     let isMounted = true;
-    let watchAccumulator = 0;
 
-    const fetchDashboardAndStartPedometer = async () => {
+    const fetchDashboardAndLocation = async () => {
       try {
         addLog('Żądanie uprawnień do lokalizacji satelitarnej...');
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
@@ -141,35 +101,6 @@ export default function DashboardScreen() {
         } else {
           addLog('⚠️ Odmowa uprawnień GPS.');
           setErrorMsg('Brak uprawnień do GPS.');
-        }
-
-        if (Platform.OS !== 'web') {
-          addLog('Sprawdzanie czujników ruchu...');
-          const isPedometerAvailable = await Pedometer.isAvailableAsync();
-          if (isPedometerAvailable) {
-            try {
-              const res = await api.get('/steps/latest');
-              if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
-            } catch (e) { addLog('⚠️ Brak wpisów w bazie.'); }
-
-            subscription = Pedometer.watchStepCount((result) => {
-              if (isMounted) {
-                const hardwareCounter = result.steps;
-                const delta = hardwareCounter - watchAccumulator;
-                if (delta > 0) {
-                  setSteps((prevTotal) => {
-                    const updatedTotal = prevTotal + delta;
-                    syncStepsWithServer(updatedTotal);
-                    return updatedTotal;
-                  });
-                  watchAccumulator = hardwareCounter;
-                }
-              }
-            });
-          }
-        } else {
-            const res = await api.get('/steps/latest');
-            if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
         }
 
         addLog('🚀 Inicjalizacja zakończona!');
@@ -186,8 +117,8 @@ export default function DashboardScreen() {
       }
     };
 
-    fetchDashboardAndStartPedometer();
-    return () => { isMounted = false; if (subscription) subscription.remove(); };
+    fetchDashboardAndLocation();
+    return () => { isMounted = false; };
   }, []);
 
   if (loading || networkErrorDetails) {
@@ -209,11 +140,14 @@ export default function DashboardScreen() {
       );
     }
 
-    const userIconSource = getCharacterAvatar(character?.class?.name);
+    // Używamy awatara z profilu użytkownika (avatarUrl)
+    const userIconSource = getUserAvatar(userProfile?.avatarUrl);
 
     let userIconUri = '';
     try {
-      userIconUri = Image.resolveAssetSource(userIconSource).uri;
+      const asset = Asset.fromModule(userIconSource);
+      userIconUri = asset.uri;
+      console.log(`[MAP] Player Marker URI: ${userIconUri}`);
     } catch (e) {
       userIconUri = typeof userIconSource === 'string' ? userIconSource : '';
     }
@@ -233,13 +167,12 @@ export default function DashboardScreen() {
           filter: invert(100%) hue-rotate(180deg) brightness(250%) contrast(80%);
         }
         
-        /* --- DODANA ZŁOTA RAMKA Z CSS --- */
         .custom-player-icon {
-          border-radius: 8px; /* Lekkie zaokrąglenie dla estetyki */
-          background-color: #2a3642; /* Tło pod ikonką, na wypadek gdyby miała przezroczystość */
-          //border: 2px solid #a38450; /* Złoty border RPG */
+          border-radius: 8px;
+          background-color: #2a3642;
+          border: 2px solid #a38450;
           box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-          object-fit: cover;
+          overflow: hidden;
         }
 
         .custom-poi-icon {
@@ -320,13 +253,18 @@ export default function DashboardScreen() {
     `;
 
     if (Platform.OS !== 'web') {
+      // Klucz WebView uwzględnia avatarUrl i nazwisko, aby wymusić przeładowanie przy zmianie profilu
+      const webViewKey = `map-${userProfile?.avatarUrl || 'none'}-${character?.class?.id || 'none'}`;
+      
       return (
         <WebView
-          key={character?.class?.name || 'default-map'}
+          key={webViewKey}
           originWhitelist={['*']}
           source={{ html: mapHtml }}
           style={{ flex: 1, backgroundColor: '#27384e' }}
           scrollEnabled={false}
+          allowFileAccess={true}
+          allowUniversalAccessFromFileURLs={true}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
             if (msg === 'toggle_nav') {
@@ -389,7 +327,7 @@ export default function DashboardScreen() {
 
       <View style={styles.mapContainer}>{renderMapArea()}</View>
 
-      <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
+      <TopStatusOverlay />
 
       {isNavVisible && <BottomNavBar />}
     </View>

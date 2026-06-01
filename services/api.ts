@@ -2,18 +2,16 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// Jesli chcesz na localhoscie
-// const API_URL = Platform.OS === 'web' 
-//   ? 'http://localhost:3000/api/v1'
-//   : `http://${process.env.EXPO_PUBLIC_LOCAL_IP}:3000/api/v1`; // Upewnij się, że EXPO_PUBLIC_LOCAL_IP jest ustawione na adres IP twojego komputera w sieci lokalnej 192.168.x.x w pliku .env
+// Na telefonie 'localhost' to sam telefon, dlatego musimy użyć adresu IP komputera (EXPO_PUBLIC_LOCAL_IP).
+// W przeglądarce 'localhost' działa poprawnie.
+const API_URL = Platform.OS === 'web'
+  ? 'http://localhost:3000/api/v1'
+  : `http://${process.env.EXPO_PUBLIC_LOCAL_IP}:3000/api/v1`;
 
-//Zalecenia mistrza fronenda aby dzialalo (włączając LTE)
-// 1. instalujesz ngroka npx install ngrok
-// 2. nowa konsola komenda ta -> npx cloudflared tunnel --url http://localhost:3000  
-// 3. kopiujesz kurwa ten urla z cloudflare'a i wklejasz na API_URL poniżej
-// 4. nowa konsola komenda ta -> npx expo start -c --tunnel / jeśli nie działa to npx expo start --tunnel
-// 5. Do linka poniżej https://dluga-nazwa-linka/api/vi
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+console.log('--- API CONFIGURATION ---');
+console.log('Target API_URL:', API_URL);
+console.log('Platform:', Platform.OS);
+console.log('-------------------------');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -29,13 +27,11 @@ api.interceptors.request.use(
     let token = null;
 
     try {
-      // Jeśli odpalamy w przeglądarce (Web)
       if (Platform.OS === 'web') {
         if (typeof window !== 'undefined') {
           token = localStorage.getItem('userToken');
         }
       } else {
-        // Jeśli odpalamy na telefonie (Android/iOS)
         token = await SecureStore.getItemAsync('userToken');
       }
     } catch (e) {
