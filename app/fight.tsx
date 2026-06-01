@@ -103,7 +103,7 @@ export default function FightScreen() {
     setOnCooldown(true);
     setTimeout(() => {
       setOnCooldown(false);
-    }, 2000);
+    }, 500);
 
     try {
       setLoading(true);
@@ -250,7 +250,7 @@ export default function FightScreen() {
               // Jeśli jest disabled, dodajemy opacity: 0.5 dla efektu wizualnego
               style={[
                 action === 'FLEE' ? styles.fleeButton : styles.actionButton,
-                isButtonDisabled && { opacity: 0.5 }
+                isButtonDisabled && { opacity: 1 }
               ]}
               onPress={() => performAction(action)}
               disabled={isButtonDisabled}

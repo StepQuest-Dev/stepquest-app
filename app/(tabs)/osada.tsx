@@ -138,9 +138,9 @@ export default function OsadaScreen() {
         name: 'STARY MĘDRZEC',
         imageSource: require('@/assets/images/mnich-icon.png'),
         dialog: '"Mapy starego świata skrywają skarby, o których inni zapomnieli..."',
-        actionLabel: 'SZUKAJ WIEDZY',
-        onAction: handleDiscover,
-        color: '#a38450'
+        actions: [
+          { label: 'SZUKAJ WIEDZY', onAction: handleDiscover, color: '#a38450' }
+        ]
       },
       warlord: {
         name: 'KAPITAN STRAŻY',
@@ -150,40 +150,47 @@ export default function OsadaScreen() {
           : raids.attacking 
             ? `Twoje wojska oblegają osadę gracza "${raids.attacking.defender.name}". Powrót za: ${getRaidTimeLeft()}.`
             : '"Moi ludzie trenują dzień i noc. Rozkaż nam, a uderzymy na sąsiednie osady!"',
-        actionLabel: raids.defending 
-          ? 'ODEPŻYJ ATAK' 
-          : raids.attacking 
-            ? 'WOJSKA W DRODZE' 
-            : 'ROZPOCZNIJ NAJAZD',
-        onAction: raids.defending 
-          ? () => handleRepelRaid(raids.defending.id) 
-          : handleStartRaid,
-        disabled: !!raids.attacking,
-        color: '#e74c3c'
+        actions: [
+          // Przycisk odpierania ataku - widoczny tylko gdy ktoś nas atakuje
+          ...(raids.defending ? [{
+            label: 'ODEPRZYJ ATAK',
+            onAction: () => handleRepelRaid(raids.defending.id),
+            color: '#e74c3c'
+          }] : []),
+          // Przycisk raidu - widoczny gdy nikt nas nie atakuje LUB gdy my nie raidujemy
+          ...(!raids.attacking ? [{
+            label: 'ROZPOCZNIJ NAJAZD',
+            onAction: handleStartRaid,
+            color: '#c0392b'
+          }] : [{
+            label: 'WOJSKA W DRODZE',
+            onAction: () => {},
+            disabled: true,
+            color: '#7f8c8d'
+          }])
+        ]
       },
       builder: {
         name: 'MISTRZ BUDOWNICZY',
         imageSource: require('@/assets/images/loczek-icon.png'),
         dialog: '"Potrzebujemy więcej surowców, jeśli chcesz wzmocnić mury tej osady."',
-        actionLabel: 'ROZBUDUJ (WKRÓTCE)',
-        onAction: () => { },
-        disabled: true,
-        color: '#3498db'
+        actions: [
+          { label: 'ROZBUDUJ (WKRÓTCE)', onAction: () => {}, disabled: true, color: '#3498db' }
+        ]
       },
       guild: {
         name: 'MISTRZ GILDII',
         imageSource: require('@/assets/images/templar-icon.png'),
         dialog: '"W jedności siła, wędrowcze. Dołącz do nas, by wspólnie podbijać ten mroczny świat!"',
-        actionLabel: 'GILDIE (WKRÓTCE)',
-        onAction: () => { },
-        disabled: true,
-        color: '#9b59b6'
+        actions: [
+          { label: 'GILDIE (WKRÓTCE)', onAction: () => {}, disabled: true, color: '#9b59b6' }
+        ]
       }
     }[activeNpc];
 
     return (
       <View style={styles.modalOverlay}>
-        <View style={[styles.npcDialogCard, { borderColor: npcData.color }]}>
+        <View style={[styles.npcDialogCard, { borderColor: npcData.actions[0]?.color || '#a38450' }]}>
           <TouchableOpacity style={styles.closeBtn} onPress={() => setActiveNpc(null)}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
@@ -196,13 +203,23 @@ export default function OsadaScreen() {
 
           <Text style={styles.modalName}>{npcData.name}</Text>
           <Text style={styles.modalDialog}>{npcData.dialog}</Text>
-          <TouchableOpacity
-            style={[styles.modalActionBtn, { backgroundColor: npcData.color }, npcData.disabled && styles.disabledBtn]}
-            onPress={npcData.onAction}
-            disabled={npcData.disabled || loading}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalActionText}>{npcData.actionLabel}</Text>}
-          </TouchableOpacity>
+          
+          <View style={{ width: '100%', gap: 10 }}>
+            {npcData.actions.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.modalActionBtn, 
+                  { backgroundColor: action.color }, 
+                  (action.disabled || loading) && styles.disabledBtn
+                ]}
+                onPress={action.onAction}
+                disabled={action.disabled || loading}
+              >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalActionText}>{action.label}</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
     );
