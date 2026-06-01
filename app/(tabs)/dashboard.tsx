@@ -59,8 +59,12 @@ export default function DashboardScreen() {
   };
 
   const syncStepsWithServer = async (currentSteps: number) => {
+    // Backend wymaga liczby całkowitej dodatniej (@IsInt, @IsPositive)
+    const validCount = Math.floor(currentSteps);
+    if (validCount <= 0) return; 
+
     try {
-      await api.post('/steps', { count: currentSteps });
+      await api.post('/steps', { count: validCount });
       setAlertConfig({
         title: '🛡️ SYNCHRONIZACJA',
         message: 'Kroki zostały pomyślnie zapisane w chmurze!',
@@ -92,7 +96,7 @@ export default function DashboardScreen() {
       const fetchLatestSteps = async () => {
         try {
           const res = await api.get('/steps/latest');
-          const serverSteps = res.data.steps || res.data.count || 0;
+          const serverSteps = res.data?.steps || res.data?.count || res.data?.totalSteps || 0;
           if (isActive) setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
         } catch (e) { }
       };
@@ -145,7 +149,7 @@ export default function DashboardScreen() {
           if (isPedometerAvailable) {
             try {
               const res = await api.get('/steps/latest');
-              if (isMounted) setSteps(res.data.steps || res.data.count || 0);
+              if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
             } catch (e) { addLog('⚠️ Brak wpisów w bazie.'); }
 
             subscription = Pedometer.watchStepCount((result) => {
@@ -164,8 +168,8 @@ export default function DashboardScreen() {
             });
           }
         } else {
-          const res = await api.get('/steps/latest');
-          if (isMounted) setSteps(res.data.steps || res.data.count || 0);
+            const res = await api.get('/steps/latest');
+            if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
         }
 
         addLog('🚀 Inicjalizacja zakończona!');

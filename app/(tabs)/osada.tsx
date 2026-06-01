@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
@@ -18,7 +18,73 @@ export default function OsadaScreen() {
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined });
   const [activeNpc, setActiveNpc] = useState<null | 'elder' | 'warlord' | 'builder' | 'guild'>(null);
 
-  const [steps, setSteps] = useState(0);
+  const [raids, setRaids] = useState<{ attacking: any, defending: any }>({ attacking: null, defending: null });
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchRaids = async () => {
+        try {
+          const res = await api.get('/raids/active');
+          setRaids(res.data);
+        } catch (e) { }
+      };
+      fetchRaids();
+    }, [])
+  );
+
+  const handleStartRaid = async () => {
+    setLoading(true);
+    try {
+      const res = await api.post('/raids/start');
+      setAlertConfig({
+        title: '⚔️ WOJNA!',
+        message: `Twoje wojska wyruszyły na osadę gracza "${res.data.defender.name}".\n\nPowrót za 2 godziny.`,
+        isSuccess: true,
+        onConfirm: undefined
+      });
+      setAlertVisible(true);
+      const activeRes = await api.get('/raids/active');
+      setRaids(activeRes.data);
+      setActiveNpc(null);
+    } catch (error: any) {
+      setAlertConfig({
+        title: 'Błąd',
+        message: error.response?.data?.message || 'Nie udało się rozpocząć najazdu.',
+        isSuccess: false,
+        onConfirm: undefined
+      });
+      setAlertVisible(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRepelRaid = async (raidId: string) => {
+    setLoading(true);
+    try {
+      await api.post(`/raids/repel/${raidId}`);
+      setAlertConfig({
+        title: '🛡️ ATAK ODPARTY!',
+        message: 'Twoi strażnicy przegonili najeźdźców! Twoja osada jest bezpieczna.',
+        isSuccess: true,
+        onConfirm: undefined
+      });
+      setAlertVisible(true);
+      const activeRes = await api.get('/raids/active');
+      setRaids(activeRes.data);
+      setActiveNpc(null);
+    } catch (error: any) {
+      setAlertConfig({
+        title: 'Błąd',
+        message: error.response?.data?.message || 'Nie udało się odeprzeć ataku.',
+        isSuccess: false,
+        onConfirm: undefined
+      });
+      setAlertVisible(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDiscover = async () => {
     setLoading(true);
@@ -53,38 +119,20 @@ export default function OsadaScreen() {
     }
   };
 
-  const syncStepsWithServer = async (currentSteps: number) => {
-    try {
-      await api.post('/steps', { count: currentSteps });
-      setAlertConfig({
-        title: '🛡️ SYNCHRONIZACJA',
-        message: 'Kroki zostały pomyślnie zapisane w chmurze!',
-        isSuccess: true,
-        onConfirm: undefined
-      });
-      setAlertVisible(true);
-    } catch (err) {
-      console.error('Błąd synchronizacji kroków:', err);
-    }
-  };
-
-  const openSyncAlert = () => {
-    setAlertConfig({
-      title: '🛡️ SYNCHRONIZACJA',
-      message: `Czy chcesz przymusowo zsynchronizować zebrane ${steps} kroków z bazą danych?`,
-      isSuccess: false,
-      onConfirm: () => {
-        setAlertVisible(false);
-        syncStepsWithServer(steps);
-      }
-    });
-    setAlertVisible(true);
-  };
-
   const renderNpcModal = () => {
     if (!activeNpc) return null;
 
-    // 1. Podmiana 'emoji' na 'imageSource' z funkcją require()
+    const getRaidTimeLeft = () => {
+      if (!raids.attacking) return '';
+      const end = new Date(raids.attacking.endTime).getTime();
+      const now = new Date().getTime();
+      const diff = end - now;
+      if (diff <= 0) return 'Zakończono';
+      const mins = Math.floor(diff / 60000);
+      const hours = Math.floor(mins / 60)
+      return `${hours}h ${mins % 60}m`;
+    };
+
     const npcData = {
       elder: {
         name: 'STARY MĘDRZEC',
@@ -97,15 +145,25 @@ export default function OsadaScreen() {
       warlord: {
         name: 'KAPITAN STRAŻY',
         imageSource: require('@/assets/images/warrior-icon.png'),
-        dialog: '"Moi ludzie trenują dzień i noc. Wkrótce uderzymy na sąsiednie osady!"',
-        actionLabel: 'NAJAZD (WKRÓTCE)',
-        onAction: () => { },
-        disabled: true,
+        dialog: raids.defending 
+          ? `WOJNA! Nasza osada jest atakowana przez gracza "${raids.defending.attacker.name}"! Musimy ich odeprzeć!`
+          : raids.attacking 
+            ? `Twoje wojska oblegają osadę gracza "${raids.attacking.defender.name}". Powrót za: ${getRaidTimeLeft()}.`
+            : '"Moi ludzie trenują dzień i noc. Rozkaż nam, a uderzymy na sąsiednie osady!"',
+        actionLabel: raids.defending 
+          ? 'ODEPŻYJ ATAK' 
+          : raids.attacking 
+            ? 'WOJSKA W DRODZE' 
+            : 'ROZPOCZNIJ NAJAZD',
+        onAction: raids.defending 
+          ? () => handleRepelRaid(raids.defending.id) 
+          : handleStartRaid,
+        disabled: !!raids.attacking,
         color: '#e74c3c'
       },
       builder: {
         name: 'MISTRZ BUDOWNICZY',
-        imageSource: require('@/assets/images/loczek-icon.png'), // <-- Twój obrazek budowniczego
+        imageSource: require('@/assets/images/loczek-icon.png'),
         dialog: '"Potrzebujemy więcej surowców, jeśli chcesz wzmocnić mury tej osady."',
         actionLabel: 'ROZBUDUJ (WKRÓTCE)',
         onAction: () => { },
@@ -130,7 +188,6 @@ export default function OsadaScreen() {
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
 
-          {/* 2. Zastąpienie <Text> komponentem <Image> */}
           <Image
             source={npcData.imageSource}
             style={styles.modalImage}
@@ -165,7 +222,18 @@ export default function OsadaScreen() {
         onClose={() => setAlertVisible(false)}
       />
 
-      <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
+      <TopStatusOverlay />
+
+      {raids.defending && (
+        <TouchableOpacity 
+          style={styles.attackWarning} 
+          onPress={() => setActiveNpc('warlord')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.attackWarningText}>🚨 TWOJA OSADA JEST ATAKOWANA! 🚨</Text>
+          <Text style={styles.attackWarningSub}>Kliknij w Koszary, aby odeprzeć wroga!</Text>
+        </TouchableOpacity>
+      )}
 
       {/* --- SCENA MIASTA (TOWN VIEW) --- */}
       <View style={styles.townView}>
@@ -220,4 +288,3 @@ export default function OsadaScreen() {
     </ImageBackground>
   );
 }
-

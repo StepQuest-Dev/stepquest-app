@@ -75,10 +75,43 @@ export const styles = StyleSheet.create({
     left: width * 0.03
   },
   guild: {
-    bottom: height * 0.33,
-    right: width * 0.15
-  },
-  modalOverlay: {
+    bottom: height * 0.3,
+    right: width * 0.05
+    },
+    attackWarning: {
+    position: 'absolute',
+    top: 130,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(231, 76, 60, 0.9)',
+    borderWidth: 2,
+    borderColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    zIndex: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+    },
+    attackWarningText: {
+    color: '#fff',
+    fontFamily: 'determination',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    },
+    attackWarningSub: {
+    color: '#fff',
+    fontFamily: 'determination',
+    fontSize: 10,
+    marginTop: 4,
+    opacity: 0.9,
+    },
+    modalOverlay: {
+
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
