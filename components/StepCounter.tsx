@@ -1,108 +1,41 @@
-import { Pedometer } from 'expo-sensors';
-import { useEffect, useState } from 'react';
-import { Button, Platform, StyleSheet } from 'react-native';
-
+import React from 'react';
+import { Button, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import { useStepSync } from '../hooks/useStepSync';
 
 export default function StepCounter() {
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [steps, setSteps] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isTracking, setIsTracking] = useState<boolean>(false);
-
-  useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
-    let isMounted = true;
-
-    async function startPedometer() {
-      if (Platform.OS === 'web') {
-        setAvailable(false);
-        setError('Pedometer nie jest obsługiwany w przeglądarce.');
-        return;
-      }
-
-      try {
-        const isAvailable = await Pedometer.isAvailableAsync();
-        if (!isMounted) return;
-
-        setAvailable(isAvailable);
-        if (!isAvailable) {
-          setError('Pedometer nie jest dostępny na tym urządzeniu.');
-          return;
-        }
-
-        setError(null);
-        const now = new Date();
-        const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const stepCountResult = await Pedometer.getStepCountAsync(startOfDay, now);
-        if (!isMounted) return;
-        setSteps(stepCountResult.steps);
-        setIsTracking(true);
-
-        subscription = Pedometer.watchStepCount((result) => {
-          if (isMounted) {
-            setSteps(result.steps ?? stepCountResult.steps);
-          }
-        });
-      } catch (e) {
-        if (!isMounted) return;
-        setAvailable(false);
-        setError(
-          e instanceof Error
-            ? e.message
-            : 'Wystąpił błąd podczas odczytu kroków.'
-        );
-      }
-    }
-
-    startPedometer();
-
-    return () => {
-      isMounted = false;
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, []);
+  const { steps, isSyncing, error, fullSync } = useStepSync();
 
   const handleRefresh = async () => {
-    if (Platform.OS === 'web') {
-      setError('Pedometer nie jest obsługiwany w przeglądarce.');
-      return;
-    }
-
     try {
-      const now = new Date();
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-      const result = await Pedometer.getStepCountAsync(startOfDay, now);
-      setSteps(result.steps);
-      setError(null);
+      await fullSync();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Błąd odświeżania krokomierza.'
-      );
+      // Błąd jest już obsługiwany przez hook
     }
   };
 
-  const statusText = available === null ? 'Sprawdzanie dostępności...' : available ? 'Pedometer dostępny' : 'Pedometer niedostępny';
-
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Status czujnika:</Text>
-      <Text style={styles.value}>{statusText}</Text>
+      <Text style={styles.label}>Status:</Text>
+      <Text style={styles.value}>{isSyncing ? 'Synchronizacja...' : 'Aktywny'}</Text>
 
       <Text style={styles.label}>Kroki dzisiaj:</Text>
-      <Text style={styles.steps}>{steps !== null ? steps : '—'}</Text>
+      {isSyncing ? (
+        <ActivityIndicator color="#ebd59b" size="large" style={{ marginVertical: 10 }} />
+      ) : (
+        <Text style={styles.steps}>{steps.toLocaleString()}</Text>
+      )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Button title="Odśwież kroków" onPress={handleRefresh} disabled={!available} />
+      <Button 
+        title={isSyncing ? "Synchronizuję..." : "Odśwież i Synchronizuj"} 
+        onPress={handleRefresh} 
+        disabled={isSyncing} 
+      />
 
       <Text style={styles.note}>
-        Na Androidzie i iOS komponent używa czujnika kroków z Expo Pedometer.
+        Kroki są pobierane z czujnika urządzenia od północy i przesyłane do chmury.
       </Text>
     </View>
   );

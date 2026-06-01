@@ -1,6 +1,5 @@
 import * as Location from 'expo-location';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -26,7 +25,6 @@ const getCharacterAvatar = (className?: string) => {
 export default function DashboardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
 
@@ -58,48 +56,9 @@ export default function DashboardScreen() {
     setCurrentStatus(msg);
   };
 
-  const syncStepsWithServer = async (currentSteps: number) => {
-    // Backend wymaga liczby całkowitej dodatniej (@IsInt, @IsPositive)
-    const validCount = Math.floor(currentSteps);
-    if (validCount <= 0) return; 
-
-    try {
-      await api.post('/steps', { count: validCount });
-      setAlertConfig({
-        title: '🛡️ SYNCHRONIZACJA',
-        message: 'Kroki zostały pomyślnie zapisane w chmurze!',
-        isSuccess: true,
-        onConfirm: undefined
-      });
-      setAlertVisible(true);
-    } catch (err) {
-      console.error('Błąd synchronizacji kroków:', err);
-    }
-  };
-
-  const openSyncAlert = () => {
-    setAlertConfig({
-      title: '🛡️ SYNCHRONIZACJA',
-      message: `Czy chcesz przymusowo zsynchronizować zebrane ${steps} kroków z bazą danych?`,
-      isSuccess: false,
-      onConfirm: () => {
-        setAlertVisible(false);
-        syncStepsWithServer(steps);
-      }
-    });
-    setAlertVisible(true);
-  };
-
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      const fetchLatestSteps = async () => {
-        try {
-          const res = await api.get('/steps/latest');
-          const serverSteps = res.data?.steps || res.data?.count || res.data?.totalSteps || 0;
-          if (isActive) setSteps((prev) => (serverSteps > prev ? serverSteps : prev));
-        } catch (e) { }
-      };
 
       const fetchPlaces = async () => {
         try {
@@ -118,7 +77,6 @@ export default function DashboardScreen() {
         } catch (e) { }
       };
 
-      fetchLatestSteps();
       fetchPlaces();
       fetchCharacter();
       return () => { isActive = false; };
@@ -126,11 +84,9 @@ export default function DashboardScreen() {
   );
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
     let isMounted = true;
-    let watchAccumulator = 0;
 
-    const fetchDashboardAndStartPedometer = async () => {
+    const fetchDashboardAndLocation = async () => {
       try {
         addLog('Żądanie uprawnień do lokalizacji satelitarnej...');
         let { status: gpsStatus } = await Location.requestForegroundPermissionsAsync();
@@ -141,35 +97,6 @@ export default function DashboardScreen() {
         } else {
           addLog('⚠️ Odmowa uprawnień GPS.');
           setErrorMsg('Brak uprawnień do GPS.');
-        }
-
-        if (Platform.OS !== 'web') {
-          addLog('Sprawdzanie czujników ruchu...');
-          const isPedometerAvailable = await Pedometer.isAvailableAsync();
-          if (isPedometerAvailable) {
-            try {
-              const res = await api.get('/steps/latest');
-              if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
-            } catch (e) { addLog('⚠️ Brak wpisów w bazie.'); }
-
-            subscription = Pedometer.watchStepCount((result) => {
-              if (isMounted) {
-                const hardwareCounter = result.steps;
-                const delta = hardwareCounter - watchAccumulator;
-                if (delta > 0) {
-                  setSteps((prevTotal) => {
-                    const updatedTotal = prevTotal + delta;
-                    syncStepsWithServer(updatedTotal);
-                    return updatedTotal;
-                  });
-                  watchAccumulator = hardwareCounter;
-                }
-              }
-            });
-          }
-        } else {
-            const res = await api.get('/steps/latest');
-            if (isMounted) setSteps(res.data?.steps || res.data?.count || res.data?.totalSteps || 0);
         }
 
         addLog('🚀 Inicjalizacja zakończona!');
@@ -186,8 +113,8 @@ export default function DashboardScreen() {
       }
     };
 
-    fetchDashboardAndStartPedometer();
-    return () => { isMounted = false; if (subscription) subscription.remove(); };
+    fetchDashboardAndLocation();
+    return () => { isMounted = false; };
   }, []);
 
   if (loading || networkErrorDetails) {
@@ -389,7 +316,7 @@ export default function DashboardScreen() {
 
       <View style={styles.mapContainer}>{renderMapArea()}</View>
 
-      <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
+      <TopStatusOverlay />
 
       {isNavVisible && <BottomNavBar />}
     </View>
