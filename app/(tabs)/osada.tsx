@@ -18,7 +18,6 @@ export default function OsadaScreen() {
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined });
   const [activeNpc, setActiveNpc] = useState<null | 'elder' | 'warlord' | 'builder' | 'guild'>(null);
 
-  const [steps, setSteps] = useState(0);
   const [raids, setRaids] = useState<{ attacking: any, defending: any }>({ attacking: null, defending: null });
 
   useFocusEffect(
@@ -120,38 +119,9 @@ export default function OsadaScreen() {
     }
   };
 
-  const syncStepsWithServer = async (currentSteps: number) => {
-    try {
-      await api.post('/steps', { count: currentSteps });
-      setAlertConfig({
-        title: '🛡️ SYNCHRONIZACJA',
-        message: 'Kroki zostały pomyślnie zapisane w chmurze!',
-        isSuccess: true,
-        onConfirm: undefined
-      });
-      setAlertVisible(true);
-    } catch (err) {
-      console.error('Błąd synchronizacji kroków:', err);
-    }
-  };
-
-  const openSyncAlert = () => {
-    setAlertConfig({
-      title: '🛡️ SYNCHRONIZACJA',
-      message: `Czy chcesz przymusowo zsynchronizować zebrane ${steps} kroków z bazą danych?`,
-      isSuccess: false,
-      onConfirm: () => {
-        setAlertVisible(false);
-        syncStepsWithServer(steps);
-      }
-    });
-    setAlertVisible(true);
-  };
-
   const renderNpcModal = () => {
     if (!activeNpc) return null;
 
-    // 1. Podmiana 'emoji' na 'imageSource' z funkcją require()
     const getRaidTimeLeft = () => {
       if (!raids.attacking) return '';
       const end = new Date(raids.attacking.endTime).getTime();
@@ -193,7 +163,7 @@ export default function OsadaScreen() {
       },
       builder: {
         name: 'MISTRZ BUDOWNICZY',
-        imageSource: require('@/assets/images/loczek-icon.png'), // <-- Twój obrazek budowniczego
+        imageSource: require('@/assets/images/loczek-icon.png'),
         dialog: '"Potrzebujemy więcej surowców, jeśli chcesz wzmocnić mury tej osady."',
         actionLabel: 'ROZBUDUJ (WKRÓTCE)',
         onAction: () => { },
@@ -218,7 +188,6 @@ export default function OsadaScreen() {
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
 
-          {/* 2. Zastąpienie <Text> komponentem <Image> */}
           <Image
             source={npcData.imageSource}
             style={styles.modalImage}
@@ -253,7 +222,7 @@ export default function OsadaScreen() {
         onClose={() => setAlertVisible(false)}
       />
 
-      <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
+      <TopStatusOverlay />
 
       {raids.defending && (
         <TouchableOpacity 
@@ -319,4 +288,3 @@ export default function OsadaScreen() {
     </ImageBackground>
   );
 }
-
