@@ -57,7 +57,14 @@ export default function DungeonScreen() {
 
         <View style={styles.monsterInfo}>
           <Text style={styles.monsterName}>{item.name}</Text>
-          <Text style={styles.monsterStats}>Lv. {item.level} | ❤️ {item.hp} HP</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={require('@/assets/images/serce.png')}
+              style={{ width: 20, height: 20, marginRight: 2 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.monsterStats}>Lv. {item.level} | {item.hp} HP</Text>
+          </View>
         </View>
 
         <TouchableOpacity

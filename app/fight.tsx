@@ -211,7 +211,7 @@ export default function FightScreen() {
         showCancel={false}
       />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 5}}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}>
         <Image source={require('@/assets/images/barracks.png')} style={{ width: 30, height: 30, marginRight: 10 }} resizeMode="contain" />
         <Text style={styles.title}>WALKA</Text>
         <Image source={require('@/assets/images/barracks.png')} style={{ width: 30, height: 30, marginLeft: 10 }} resizeMode="contain" />
@@ -223,12 +223,7 @@ export default function FightScreen() {
           <Image source={finalPlayerImageSource} style={styles.avatar} resizeMode="cover" />
           <Text style={styles.statName} numberOfLines={1}>{playerData.name}</Text>
           <View style={styles.hpContainer}>
-            <Image
-              source={require('@/assets/images/serce.png')}
-              style={{ width: 25, height: 25 }}
-              resizeMode="contain"
-            />
-            <Text style={styles.hpText}>{combatState?.playerHp ?? '?'} HP</Text>
+            <Text style={styles.hpText}>❤️ {combatState?.playerHp ?? '?'} HP</Text>
           </View>
         </View>
 
@@ -238,12 +233,7 @@ export default function FightScreen() {
           <Image source={enemyImageSource} style={styles.avatar} resizeMode="cover" />
           <Text style={styles.statName} numberOfLines={1}>{combatState?.enemyName || 'Wróg'}</Text>
           <View style={styles.hpContainer}>
-            <Image
-              source={require('@/assets/images/serce.png')}
-              style={{ width: 25, height: 25 }}
-              resizeMode="contain"
-            />
-            <Text style={styles.hpText}>{combatState?.enemyHp ?? '?'} HP</Text>
+            <Text style={styles.hpText}>❤️ {combatState?.enemyHp ?? '?'} HP</Text>
           </View>
         </View>
       </View>
