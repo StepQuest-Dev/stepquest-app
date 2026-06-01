@@ -51,7 +51,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
               setCharacter(charData);
             }
             if (stepsRes?.data) {
-              setServerSteps(stepsRes.data.steps || stepsRes.data.count || 0);
+              setServerSteps(stepsRes.data.steps || stepsRes.data.count || stepsRes.data.totalSteps || 0);
             }
           }
         } catch (e) {
