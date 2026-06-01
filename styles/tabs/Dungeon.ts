@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginBottom: 10,
-    tintColor: '#e74c3c'
+    //tintColor: '#e74c3c'
   },
   title: {
     fontFamily: 'determination',

@@ -4,22 +4,21 @@ import { Pedometer } from 'expo-sensors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import GameDiagnostics from '../../components/GameDiagnostics';
-import api from '../../services/api';
-import { styles } from '../../styles/tabs/Dashboard';
 import BottomNavBar from '../../components/BottomNavBar';
 import CustomAlert from '../../components/CustomAlerts';
+import GameDiagnostics from '../../components/GameDiagnostics';
 import TopStatusOverlay from '../../components/TopStatusOverlay';
+import api from '../../services/api';
+import { styles } from '../../styles/tabs/Dashboard';
 
 // --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
 const getCharacterAvatar = (className?: string) => {
   if (!className) return require('@/assets/images/user-icon.png');
   switch (className.toLowerCase()) {
-    case 'wojownik': return require('@/assets/images/warrior-icon.png');
-    case 'mnich': return require('@/assets/images/mnich-icon.png');
-    case 'czarnoksiężnik':
-    case 'mag': return require('@/assets/images/mag-icon.png');
-    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    case 'wojownik': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+    case 'mnich': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+    case 'czarnoksiężnik': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+    case 'zwiadowca': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
     default: return require('@/assets/images/user-icon.png');
   }
 };
@@ -30,7 +29,7 @@ export default function DashboardScreen() {
   const [steps, setSteps] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discoveredPlaces, setDiscoveredPlaces] = useState<any[]>([]);
-  
+
   const [character, setCharacter] = useState<any>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -38,11 +37,11 @@ export default function DashboardScreen() {
   const [isNavVisible, setIsNavVisible] = useState(true);
 
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ 
-    title: '', 
-    message: '', 
-    isSuccess: true, 
-    onConfirm: undefined as (() => void) | undefined 
+  const [alertConfig, setAlertConfig] = useState({
+    title: '',
+    message: '',
+    isSuccess: true,
+    onConfirm: undefined as (() => void) | undefined
   });
 
   const [currentStatus, setCurrentStatus] = useState('Inicjalizacja świata gry...');
@@ -193,10 +192,10 @@ export default function DashboardScreen() {
 
   if (loading || networkErrorDetails) {
     return (
-      <GameDiagnostics 
-        currentStatus={currentStatus} 
-        debugLogs={debugLogs} 
-        networkErrorDetails={networkErrorDetails} 
+      <GameDiagnostics
+        currentStatus={currentStatus}
+        debugLogs={debugLogs}
+        networkErrorDetails={networkErrorDetails}
       />
     );
   }
@@ -209,16 +208,16 @@ export default function DashboardScreen() {
         </View>
       );
     }
-    
+
     const userIconSource = getCharacterAvatar(character?.class?.name);
-    
+
     let userIconUri = '';
     try {
       userIconUri = Image.resolveAssetSource(userIconSource).uri;
     } catch (e) {
       userIconUri = typeof userIconSource === 'string' ? userIconSource : '';
     }
-    
+
     const mapHtml = `
       <!DOCTYPE html>
       <html>
@@ -238,7 +237,7 @@ export default function DashboardScreen() {
         .custom-player-icon {
           border-radius: 8px; /* Lekkie zaokrąglenie dla estetyki */
           background-color: #2a3642; /* Tło pod ikonką, na wypadek gdyby miała przezroczystość */
-          border: 2px solid #a38450; /* Złoty border RPG */
+          //border: 2px solid #a38450; /* Złoty border RPG */
           box-shadow: 2px 2px 4px rgba(0,0,0,0.8);
           object-fit: cover;
         }
@@ -323,12 +322,12 @@ export default function DashboardScreen() {
     if (Platform.OS !== 'web') {
       return (
         <WebView
-          key={character?.class?.name || 'default-map'} 
+          key={character?.class?.name || 'default-map'}
           originWhitelist={['*']}
           source={{ html: mapHtml }}
           style={{ flex: 1, backgroundColor: '#27384e' }}
           scrollEnabled={false}
-          onMessage={(e) => { 
+          onMessage={(e) => {
             const msg = e.nativeEvent.data;
             if (msg === 'toggle_nav') {
               setIsNavVisible(!isNavVisible);
@@ -354,7 +353,7 @@ export default function DashboardScreen() {
         lat: location.coords.latitude,
         lon: location.coords.longitude
       });
-      
+
       setAlertConfig({
         title: '🏆 MIEJSCE ODWIEDZONE',
         message: `Gratulacje! Odwiedziłeś "${res.data.placeName}".\n\nNagrody:\n⭐ ${res.data.rewards.exp} EXP\n💰 ${res.data.rewards.gold} Złota`,
@@ -379,7 +378,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <CustomAlert 
+      <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
@@ -392,7 +391,7 @@ export default function DashboardScreen() {
 
       <TopStatusOverlay steps={steps} onSyncPress={openSyncAlert} />
 
-      {isNavVisible && <BottomNavBar/>}
+      {isNavVisible && <BottomNavBar />}
     </View>
   );
 }

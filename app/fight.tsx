@@ -1,19 +1,18 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../components/CustomAlerts';
 import api from '../services/api';
 import { styles } from '../styles/tabs/Fight';
 
 // --- FUNKCJA POMOCNICZA DO AWATARU POSTACI ---
 const getCharacterAvatar = (className?: string) => {
-  if (!className) return null; 
+  if (!className) return null;
   switch (className.toLowerCase()) {
-    case 'wojownik': return require('@/assets/images/warrior-icon.png');
-    case 'mnich': return require('@/assets/images/mnich-icon.png');
-    case 'czarnoksiężnik':
-    case 'mag': return require('@/assets/images/mag-icon.png');
-    case 'zwiadowca': return require('@/assets/images/loczek-icon.png');
+    case 'wojownik': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+    case 'mnich': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+    case 'czarnoksiężnik': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+    case 'zwiadowca': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
     default: return null;
   }
 };
@@ -24,7 +23,7 @@ export default function FightScreen() {
 
   const [combatState, setCombatState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // --- NOWY STAN: COOLDOWN NA PRZYCISKI ---
   const [onCooldown, setOnCooldown] = useState(false);
 
@@ -58,16 +57,16 @@ export default function FightScreen() {
 
         let pName = 'Ty';
         let pAvatarSource = null;
-        
+
         if (charRes?.data) {
           const char = Array.isArray(charRes.data) ? charRes.data[0] : charRes.data;
           if (char?.name) pName = char.name;
-          
+
           if (char?.class?.name) {
             pAvatarSource = getCharacterAvatar(char.class.name);
           }
         }
-        
+
         if (!pAvatarSource && userRes?.data?.avatarUrl) {
           pAvatarSource = { uri: userRes.data.avatarUrl };
         }
@@ -186,10 +185,14 @@ export default function FightScreen() {
   }
 
   const finalPlayerImageSource = playerData.avatarSource ? playerData.avatarSource : require('@/assets/images/user-icon.png');
-  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/skelet-icon.png');
+  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/framed-icons/goblin-icon-ramka.png');
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require('@/assets/images/dungeon-background.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
       {/* PRZYCISK DEV */}
       <TouchableOpacity
         onPress={handleDevForceStop}
@@ -208,7 +211,11 @@ export default function FightScreen() {
         showCancel={false}
       />
 
-      <Text style={styles.title}>⚔️ WALKA ⚔️</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}>
+        <Image source={require('@/assets/images/barracks.png')} style={{ width: 30, height: 30, marginRight: 10 }} resizeMode="contain" />
+        <Text style={styles.title}>WALKA</Text>
+        <Image source={require('@/assets/images/barracks.png')} style={{ width: 30, height: 30, marginLeft: 10 }} resizeMode="contain" />
+      </View>
       <Text style={styles.turn}>Tura: {combatState?.turn || '?'}</Text>
 
       <View style={styles.statsContainer}>
@@ -236,14 +243,14 @@ export default function FightScreen() {
         {combatState?.availableActions?.map((action: string) => {
           // Sprawdzamy czy przyciski mają być zablokowane
           const isButtonDisabled = loading || onCooldown;
-          
+
           return (
             <TouchableOpacity
               key={action}
               // Jeśli jest disabled, dodajemy opacity: 0.5 dla efektu wizualnego
               style={[
                 action === 'FLEE' ? styles.fleeButton : styles.actionButton,
-                isButtonDisabled && { opacity: 0.5 } 
+                isButtonDisabled && { opacity: 0.5 }
               ]}
               onPress={() => performAction(action)}
               disabled={isButtonDisabled}
@@ -255,6 +262,6 @@ export default function FightScreen() {
           );
         })}
       </View>
-    </View>
+    </ImageBackground>
   );
 }

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { styles } from '../../styles/tabs/Dungeon';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from 'react-native';
 import BottomNavBar from '../../components/BottomNavBar';
-import api from '../../services/api';
 import CustomAlert from '../../components/CustomAlerts'; // Import customowego alertu
+import api from '../../services/api';
+import { styles } from '../../styles/tabs/Dungeon';
 
 export default function DungeonScreen() {
   const router = useRouter();
@@ -21,8 +21,8 @@ export default function DungeonScreen() {
     const fetchEnemies = async () => {
       try {
         console.log('Pobieram potwory z /api/v1/enemies ...');
-        const response = await api.get('/enemies'); 
-        
+        const response = await api.get('/enemies');
+
         console.log('✅ Udało się! Pobrano potwory:', response.data);
 
         if (isMounted) {
@@ -32,7 +32,7 @@ export default function DungeonScreen() {
         }
       } catch (error: any) {
         console.error('❌ BŁĄD pobierania przeciwników:', error.response?.data || error.message);
-        
+
         if (isMounted) {
           setAlertConfig({ title: 'BŁĄD', message: 'Nie udało się połączyć z bazą bestii.', isSuccess: false });
           setAlertVisible(true);
@@ -47,21 +47,28 @@ export default function DungeonScreen() {
   }, []);
 
   const renderMonster = ({ item }: any) => {
-    const imageSource = item.imageUrl 
-      ? { uri: item.imageUrl } 
-      : require('@/assets/images/user-icon.png');
+    const imageSource = item.imageUrl
+      ? { uri: item.imageUrl }
+      : require('@/assets/images/framed-icons/goblin-icon-ramka.png');
 
     return (
       <View style={styles.monsterCard}>
         <Image source={imageSource} style={styles.monsterImage} resizeMode="cover" />
-        
+
         <View style={styles.monsterInfo}>
           <Text style={styles.monsterName}>{item.name}</Text>
-          <Text style={styles.monsterStats}>Lv. {item.level} | ❤️ {item.hp} HP</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={require('@/assets/images/serce.png')}
+              style={{ width: 20, height: 20, marginRight: 2 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.monsterStats}>Lv. {item.level} | {item.hp} HP</Text>
+          </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.attackButton} 
+        <TouchableOpacity
+          style={styles.attackButton}
           onPress={() => router.push({ pathname: '/fight', params: { enemyId: item.id } })}
         >
           <Text style={styles.attackButtonText}>ATAKUJ</Text>
@@ -73,7 +80,7 @@ export default function DungeonScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#12181f' }}>
       {/* UNIWERSALNY ALERT */}
-      <CustomAlert 
+      <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
@@ -106,7 +113,7 @@ export default function DungeonScreen() {
         )}
       </View>
 
-      <BottomNavBar /> 
+      <BottomNavBar />
     </View>
   );
 }

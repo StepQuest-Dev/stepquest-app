@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { useFocusEffect, useRouter, usePathname } from 'expo-router';
+import { useFocusEffect, usePathname, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
 import { styles as dashboardStyles } from '../styles/tabs/Dashboard';
 
@@ -12,10 +12,10 @@ interface TopStatusOverlayProps {
 // --- FUNKCJA POMOCNICZA DO AWATARU UŻYTKOWNIKA ---
 const getUserAvatar = (avatarUrl?: string | null) => {
   switch (avatarUrl) {
-    case 'warrior-icon.png': return require('@/assets/images/warrior-icon.png');
-    case 'mnich-icon.png': return require('@/assets/images/mnich-icon.png');
-    case 'mag-icon.png': return require('@/assets/images/mag-icon.png');
-    case 'loczek-icon.png': return require('@/assets/images/loczek-icon.png');
+    case 'warrior-icon.png': return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+    case 'mnich-icon.png': return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+    case 'mag-icon.png': return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+    case 'loczek-icon.png': return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
     default: return require('@/assets/images/user-icon.png');
   }
 };
@@ -26,7 +26,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
   const [username, setUsername] = useState('');
   const [character, setCharacter] = useState<any>(null);
   const [serverSteps, setServerSteps] = useState(0);
-  
+
   // --- NOWY STAN NA AVATAR URL Z BACKENDU ---
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
             api.get('/character').catch(() => null),
             api.get('/steps/latest').catch(() => null),
           ]);
-          
+
           if (isActive) {
             if (userRes?.data) {
               setUsername(userRes.data.username || userRes.data.email);
@@ -65,21 +65,26 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
   );
 
   const displaySteps = propSteps !== undefined ? propSteps : serverSteps;
-  
+
+  const level = character?.level || 1;
+  const currentExp = character?.exp ?? 0;
+  const expToNext = level * 100;
+  const expFillPercent = expToNext > 0 ? Math.min((currentExp / expToNext) * 100, 100) : 0;
+
   // Pobieramy obrazek UŻYTKOWNIKA
   const avatarSource = getUserAvatar(avatarUrl);
 
   return (
     <View style={dashboardStyles.topOverlay} pointerEvents="box-none">
       <View style={dashboardStyles.profileHeader}>
-        <TouchableOpacity 
-          style={dashboardStyles.avatarPlaceholder} 
-          onPress={() => router.push({ pathname: '/(tabs)/profile', params: { from: pathname } })} 
+        <TouchableOpacity
+          style={dashboardStyles.avatarPlaceholder}
+          onPress={() => router.push({ pathname: '/(tabs)/profile', params: { from: pathname } })}
           activeOpacity={0.7}
         >
           <Image source={avatarSource} style={dashboardStyles.avatarImage} resizeMode="cover" />
         </TouchableOpacity>
-        
+
         <View style={dashboardStyles.profileInfo}>
           <Text style={[dashboardStyles.usernameText, { fontFamily: 'determination' }]} numberOfLines={1}>
             {username.toUpperCase()}
@@ -89,20 +94,26 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
               LV. {character?.level || 1}
             </Text>
             <Text style={[dashboardStyles.expLabel, { fontFamily: 'determination' }]}>EXP</Text>
-            <View style={dashboardStyles.expBarBg}>
-              <View 
+            <View style={[dashboardStyles.expBarBg, { width: 90, height: 15 }]}>
+              <View
                 style={[
-                  dashboardStyles.expBarFill, 
-                  { width: `${Math.min(character?.exp || 0, 100)}%` }
-                ]} 
+                  dashboardStyles.expBarFill,
+                  { width: `${expFillPercent}%` },
+                ]}
               />
+              <Text
+                style={[dashboardStyles.expBarText, { fontFamily: 'determination'}]}
+                numberOfLines={1}
+              >
+                {currentExp}/{expToNext}
+              </Text>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={dashboardStyles.stepCoinsContainer} 
-          onPress={onSyncPress} 
+        <TouchableOpacity
+          style={dashboardStyles.stepCoinsContainer}
+          onPress={onSyncPress}
           activeOpacity={onSyncPress ? 0.7 : 1}
           disabled={!onSyncPress}
         >

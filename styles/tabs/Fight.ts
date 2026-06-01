@@ -3,9 +3,9 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#12181f',
     padding: 20,
-    justifyContent: 'center'
+    justifyContent: 'flex-start',
+    paddingTop: 60
   },
   title: {
     fontSize: 32,
@@ -13,19 +13,27 @@ export const styles = StyleSheet.create({
     color: '#e74c3c',
     textAlign: 'center',
     marginBottom: 5,
-    letterSpacing: 2
+    letterSpacing: 2,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1
   },
   turn: {
     color: '#ebd59b',
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 30,
-    fontFamily: 'determination'
+    fontFamily: 'determination',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+    paddingTop: 80
   },
   text: {
     color: '#8a94a6',
     textAlign: 'center',
-    marginTop: 15
+    marginTop: 15,
+    fontFamily: 'determination'
   },
   statsContainer: {
     flexDirection: 'row',
@@ -34,7 +42,7 @@ export const styles = StyleSheet.create({
     marginBottom: 40
   },
   statBox: {
-    backgroundColor: '#1d2631',
+    backgroundColor: 'rgba(29, 38, 49, 0.85)',
     paddingVertical: 15,
     paddingHorizontal: 10,
     borderRadius: 12,
@@ -43,13 +51,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center'
+
   },
   avatar: {
     width: 60,
     height: 60,
     borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#ebd59b',
     marginBottom: 10,
     backgroundColor: '#2a3642'
   },
@@ -89,7 +96,7 @@ export const styles = StyleSheet.create({
     gap: 15
   },
   actionButton: {
-    backgroundColor: '#8b0000',
+    backgroundColor: 'rgba(139, 0, 0, 0.85)',
     padding: 15,
     borderRadius: 8,
     borderWidth: 2,
@@ -97,7 +104,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center'
   },
   fleeButton: {
-    backgroundColor: '#2a3642',
+    backgroundColor: 'rgba(42, 54, 66, 0.85)',
     padding: 15,
     borderRadius: 8,
     borderWidth: 2,

@@ -21,7 +21,7 @@ export const charStyles = StyleSheet.create({
 
   // Character Details
   detailsCard: { backgroundColor: '#1d2631', padding: 20, borderRadius: 8, borderWidth: 1, borderColor: '#a38450', alignItems: 'center' },
-  bigAvatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 15, borderWidth: 2, borderColor: '#ebd59b' },
+  bigAvatar: { width: 100, height: 100, borderRadius: 10, marginBottom: 15, borderWidth: 2, borderColor: '#ebd59b' },
   charName: { color: '#ebd59b', fontFamily: 'determination', fontSize: 24, marginBottom: 5 },
   charLevel: { color: '#8a94a6', fontFamily: 'determination', fontSize: 16, marginBottom: 20 },
   deleteBtn: { backgroundColor: '#e74c3c', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 30, borderWidth: 1, borderColor: '#c0392b' },
