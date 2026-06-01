@@ -66,6 +66,11 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
 
   const displaySteps = propSteps !== undefined ? propSteps : serverSteps;
 
+  const level = character?.level || 1;
+  const currentExp = character?.exp ?? 0;
+  const expToNext = level * 100;
+  const expFillPercent = expToNext > 0 ? Math.min((currentExp / expToNext) * 100, 100) : 0;
+
   // Pobieramy obrazek UŻYTKOWNIKA
   const avatarSource = getUserAvatar(avatarUrl);
 
@@ -89,13 +94,19 @@ export default function TopStatusOverlay({ steps: propSteps, onSyncPress }: TopS
               LV. {character?.level || 1}
             </Text>
             <Text style={[dashboardStyles.expLabel, { fontFamily: 'determination' }]}>EXP</Text>
-            <View style={dashboardStyles.expBarBg}>
+            <View style={[dashboardStyles.expBarBg, { width: 90, height: 15 }]}>
               <View
                 style={[
                   dashboardStyles.expBarFill,
-                  { width: `${Math.min(character?.exp || 0, 100)}%` }
+                  { width: `${expFillPercent}%` },
                 ]}
               />
+              <Text
+                style={[dashboardStyles.expBarText, { fontFamily: 'determination'}]}
+                numberOfLines={1}
+              >
+                {currentExp}/{expToNext}
+              </Text>
             </View>
           </View>
         </View>
