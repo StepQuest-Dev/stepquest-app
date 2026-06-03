@@ -210,5 +210,91 @@ export const styles = StyleSheet.create({
         //fontStyle: 'italic',
         fontSize: 13,
         fontFamily: 'determination'
+    },
+    // --- STYLE EKWIPUNKU ---
+    equipmentButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2a3642',
+        borderWidth: 1,
+        borderColor: '#a38450',
+        borderRadius: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        marginTop: 10,
+        alignSelf: 'flex-start'
+    },
+    equipmentButtonText: {
+        color: '#ebd59b',
+        fontFamily: 'determination',
+        fontSize: 14,
+        marginLeft: 8
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    equipmentPanel: {
+        width: '100%',
+        backgroundColor: '#1d2631',
+        borderWidth: 2,
+        borderColor: '#a38450',
+        borderRadius: 8,
+        padding: 15,
+        maxHeight: '80%'
+    },
+    equipmentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#a38450',
+        paddingBottom: 10
+    },
+    equipmentTitle: {
+        fontFamily: 'determination',
+        fontSize: 20,
+        color: '#ebd59b'
+    },
+    closeButton: {
+        padding: 5
+    },
+    equipmentGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center'
+    },
+    equipmentSlot: {
+        width: 70,
+        height: 70,
+        backgroundColor: '#12181f',
+        borderWidth: 2,
+        borderColor: '#454f5b',
+        borderRadius: 4,
+        margin: 8,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    equipmentSlotEquipped: {
+        borderColor: '#ebd59b',
+        backgroundColor: '#2a3642'
+    },
+    slotLabel: {
+        color: '#8a94a6',
+        fontSize: 10,
+        fontFamily: 'determination',
+        marginTop: 4,
+        textAlign: 'center'
+    },
+    itemName: {
+        color: '#ebd59b',
+        fontSize: 8,
+        fontFamily: 'determination',
+        marginTop: 2,
+        textAlign: 'center'
     }
 });

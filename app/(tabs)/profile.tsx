@@ -3,16 +3,31 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Modal, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import CustomAlert from '../../components/CustomAlerts';
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Profile';
 
 // --- INTERFEJSY ---
-interface Character { id: string; name: string; level: number; exp: number; gold: number; hp: number; maxHp: number; attack: number; defense: number; class?: { name: string }; }
+interface Item { id: string; name: string; type: string; slot: string | null; attackBonus: number; defenseBonus: number; hpBonus: number; }
+interface InventoryItem { id: string; isEquipped: boolean; quantity: number; item: Item; }
+interface Character { id: string; name: string; level: number; exp: number; gold: number; hp: number; maxHp: number; attack: number; defense: number; class?: { name: string }; inventory?: InventoryItem[]; }
 interface BattleHistory { id: string; status: 'WON' | 'LOST'; createdAt: string; enemy: { name: string; level: number; }; }
 interface CombatStats { won: number; lost: number; total: number; }
 interface UserProfile { username: string; email: string; avatarUrl: string | null; }
+
+// --- STAŁE EKWIPUNKU ---
+const EQUIPMENT_SLOTS = [
+  { id: 'head', label: 'GŁOWA', icon: 'mask' },
+  { id: 'neck', label: 'SZYJA', icon: 'gem' },
+  { id: 'chest', label: 'TUŁÓW', icon: 'vest' },
+  { id: 'back', label: 'PLECY', icon: 'dragon' },
+  { id: 'hands', label: 'DŁONIE', icon: 'fist-raised' },
+  { id: 'legs', label: 'NOGI', icon: 'walking' },
+  { id: 'feet', label: 'STOPY', icon: 'shoe-prints' },
+  { id: 'weapon', label: 'BROŃ', icon: 'hammer' },
+  { id: 'SHIELD', label: 'TARCZA', icon: 'shield-alt' },
+];
 
 // --- FUNKCJE POMOCNICZE ---
 const getCharacterAvatar = (className?: string) => {
@@ -50,6 +65,7 @@ export default function PlayerProfile() {
   const [loading, setLoading] = useState(true);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [avatarClicks, setAvatarClicks] = useState(0);
+  const [isEquipmentVisible, setIsEquipmentVisible] = useState(false);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', isSuccess: true, onConfirm: undefined as (() => void) | undefined });
@@ -212,34 +228,46 @@ export default function PlayerProfile() {
 
             <Text style={styles.sectionTitle}>⛺ TWOJA POSTAĆ</Text>
             {character ? (
-              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(tabs)/CharacterScreen')} style={{ marginBottom: 20 }}>
-                <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch' }]}>
-                  
-                  {/* SEKCJA POSTACI - Avatar przypisany do klasy postaci */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-                    <View style={[styles.avatarWrapper, { marginRight: 15 }]}>
-                      <Image 
-                        source={getCharacterAvatar(character.class?.name)} 
-                        style={styles.avatar} 
-                        resizeMode="cover" 
-                      />
+              <View style={{ marginBottom: 20 }}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(tabs)/CharacterScreen')}>
+                  <View style={[styles.headerCard, { backgroundColor: '#1d2631', flexDirection: 'column', alignItems: 'stretch', marginBottom: 0 }]}>
+                    
+                    {/* SEKCJA POSTACI - Avatar przypisany do klasy postaci */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                      <View style={[styles.avatarWrapper, { marginRight: 15 }]}>
+                        <Image 
+                          source={getCharacterAvatar(character.class?.name)} 
+                          style={styles.avatar} 
+                          resizeMode="cover" 
+                        />
+                      </View>
+                      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
+                        <Text style={[styles.levelText, { color: '#ebd59b', fontFamily: 'determination' }]}>Lv. {character.level}</Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={[styles.username, { color: '#ebd59b' }]}>{character.name.toUpperCase()}</Text>
-                      <Text style={[styles.levelText, { color: '#ebd59b', fontFamily: 'determination' }]}>Lv. {character.level}</Text>
-                    </View>
-                  </View>
 
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
-                    <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <Text style={{ color: '#e74c3c', fontFamily: 'determination' }}>❤️ HP: {character.hp} / {character.maxHp}</Text>
+                      <Text style={{ color: '#f1c40f', fontFamily: 'determination' }}>💰 Złoto: {character.gold}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>⚔️ Atak: {character.attack}</Text>
+                      <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>🛡️ Obrona: {character.defense}</Text>
+                    </View>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>⚔️ Atak: {character.attack}</Text>
-                    <Text style={{ color: '#8a94a6', fontFamily: 'determination' }}>🛡️ Obrona: {character.defense}</Text>
-                  </View>
+                </TouchableOpacity>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-start', marginTop: 8 }}>
+                  <TouchableOpacity 
+                    style={styles.equipmentButton}
+                    onPress={() => setIsEquipmentVisible(true)}
+                  >
+                    <FontAwesome5 name="shield-alt" size={14} color="#ebd59b" />
+                    <Text style={styles.equipmentButtonText}>EKWIPUNEK</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             ) : (
               <View style={{ alignItems: 'center', marginVertical: 20 }}>
                 <Text style={styles.emptyText}>Nie posiadasz jeszcze wojownika.</Text>
@@ -275,6 +303,70 @@ export default function PlayerProfile() {
           ) : null
         }
       />
+
+      {/* --- MODAL EKWIPUNKU --- */}
+      <Modal
+        visible={isEquipmentVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsEquipmentVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsEquipmentVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.equipmentPanel} 
+            activeOpacity={1} 
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.equipmentHeader}>
+              <Text style={styles.equipmentTitle}>EKWIPUNEK</Text>
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={() => setIsEquipmentVisible(false)}
+              >
+                <FontAwesome5 name="times" size={20} color="#ebd59b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.equipmentGrid}>
+              {EQUIPMENT_SLOTS.map((slot) => {
+                const inventoryItem = character?.inventory?.find(
+                  (i) => i.isEquipped && i.item.slot === slot.id
+                );
+                const isEquipped = !!inventoryItem;
+
+                return (
+                  <View key={slot.id} style={{ alignItems: 'center' }}>
+                    <View style={[styles.equipmentSlot, isEquipped && styles.equipmentSlotEquipped]}>
+                      <FontAwesome5 
+                        name={slot.icon} 
+                        size={24} 
+                        color={isEquipped ? '#ebd59b' : '#454f5b'} 
+                      />
+                      {isEquipped && (
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {inventoryItem.item.name}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.slotLabel}>{slot.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.equipmentButton, { alignSelf: 'center', marginTop: 25, paddingHorizontal: 30 }]}
+              onPress={() => setIsEquipmentVisible(false)}
+            >
+              <Text style={styles.equipmentButtonText}>ZAMKNIJ</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
