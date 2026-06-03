@@ -17,6 +17,22 @@ const getCharacterAvatar = (className?: string) => {
   }
 };
 
+// --- FUNKCJA POMOCNICZA DO IKON PRZECIWNIKÓW ---
+const getEnemyIcon = (imageUrl?: string | null) => {
+  if (!imageUrl) return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+  
+  // Mapowanie na podstawie ścieżek z seeda lub nazw plików
+  if (imageUrl.includes('goblin-icon-ramka')) return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+  if (imageUrl.includes('loczek-icon-ramka')) return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
+  if (imageUrl.includes('mag-icon-ramka')) return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+  if (imageUrl.includes('monk-icon-ramka')) return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+  if (imageUrl.includes('warrior-icon-ramka')) return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+  if (imageUrl.includes('Templar-icon-ramka')) return require('@/assets/images/framed-icons/Templar-icon-ramka.png');
+
+  // Fallback
+  return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+};
+
 export default function FightScreen() {
   const router = useRouter();
   const { enemyId } = useLocalSearchParams();
@@ -36,7 +52,6 @@ export default function FightScreen() {
   });
 
   const [playerData, setPlayerData] = useState({ name: 'Ty', avatarSource: null as any });
-  const [enemyAvatar, setEnemyAvatar] = useState<string | null>(null);
 
   // --- FUNKCJA DEV: WYMUSZONE ZAKOŃCZENIE ---
   const handleDevForceStop = () => {
@@ -48,11 +63,10 @@ export default function FightScreen() {
     const startCombat = async () => {
       try {
         const payload = { enemyId: enemyId };
-        const [combatRes, charRes, userRes, enemiesRes] = await Promise.all([
+        const [combatRes, charRes, userRes] = await Promise.all([
           api.post('/combat/start', payload),
           api.get('/character').catch(() => null),
-          api.get('/auth/me').catch(() => null),
-          api.get('/enemies').catch(() => null)
+          api.get('/auth/me').catch(() => null)
         ]);
 
         let pName = 'Ty';
@@ -72,13 +86,6 @@ export default function FightScreen() {
         }
 
         setPlayerData({ name: pName, avatarSource: pAvatarSource });
-
-        if (enemiesRes?.data) {
-          const enemiesList = Array.isArray(enemiesRes.data) ? enemiesRes.data : (enemiesRes.data.data || []);
-          const currentEnemy = enemiesList.find((e: any) => e.id === enemyId || e._id === enemyId);
-          if (currentEnemy?.imageUrl) setEnemyAvatar(currentEnemy.imageUrl);
-        }
-
         setCombatState(combatRes.data);
       } catch (error: any) {
         setAlertConfig({
@@ -185,7 +192,7 @@ export default function FightScreen() {
   }
 
   const finalPlayerImageSource = playerData.avatarSource ? playerData.avatarSource : require('@/assets/images/user-icon.png');
-  const enemyImageSource = enemyAvatar ? { uri: enemyAvatar } : require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+  const enemyImageSource = getEnemyIcon(combatState?.enemyImageUrl);
 
   return (
     <ImageBackground

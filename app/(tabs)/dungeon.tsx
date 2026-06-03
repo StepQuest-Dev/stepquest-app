@@ -6,6 +6,26 @@ import CustomAlert from '../../components/CustomAlerts'; // Import customowego a
 import api from '../../services/api';
 import { styles } from '../../styles/tabs/Dungeon';
 
+// --- FUNKCJA POMOCNICZA DO IKON PRZECIWNIKÓW ---
+const getEnemyIcon = (imageUrl?: string | null) => {
+  if (!imageUrl) return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+
+  // Mapowanie na podstawie ścieżek z seeda lub nazw plików
+  if (imageUrl.includes('goblin-icon-ramka')) return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+  if (imageUrl.includes('loczek-icon-ramka')) return require('@/assets/images/framed-icons/loczek-icon-ramka.png');
+  if (imageUrl.includes('mag-icon-ramka')) return require('@/assets/images/framed-icons/mag-icon-ramka.png');
+  if (imageUrl.includes('monk-icon-ramka')) return require('@/assets/images/framed-icons/monk-icon-ramka.png');
+  if (imageUrl.includes('warrior-icon-ramka')) return require('@/assets/images/framed-icons/warrior-icon-ramka.png');
+  if (imageUrl.includes('Templar-icon-ramka')) return require('@/assets/images/framed-icons/Templar-icon-ramka.png');
+
+  // Starsze identyfikatory (kompatybilność wsteczna)
+  if (imageUrl === 'goblin-icon') return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+  if (imageUrl === 'skeleton-icon') return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+
+  // Fallback
+  return require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+};
+
 export default function DungeonScreen() {
   const router = useRouter();
   const [monsters, setMonsters] = useState<any[]>([]);
@@ -47,9 +67,7 @@ export default function DungeonScreen() {
   }, []);
 
   const renderMonster = ({ item }: any) => {
-    const imageSource = item.imageUrl
-      ? { uri: item.imageUrl }
-      : require('@/assets/images/framed-icons/goblin-icon-ramka.png');
+    const imageSource = getEnemyIcon(item.imageUrl);
 
     return (
       <View style={styles.monsterCard}>
