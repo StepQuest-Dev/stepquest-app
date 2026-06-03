@@ -16,6 +16,10 @@ export default function RegisterScreen() {
   // Widoczność hasła
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleRegister = async () => {
     // --- POPRAWKA: Ukrywamy prawdziwe hasło w logach (Maskowanie) ---
     console.log('🚀 Kliknięto zarejestruj! Dane:', { 
@@ -27,6 +31,24 @@ export default function RegisterScreen() {
     if (!email || !username || !password) {
       const msg = 'Uzupełnij wszystkie pola!';
       console.warn(msg);
+      typeof window !== 'undefined' ? alert(msg) : Alert.alert('Błąd', msg);
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      const msg = 'Wprowadź poprawny adres e-mail!';
+      typeof window !== 'undefined' ? alert(msg) : Alert.alert('Błąd', msg);
+      return;
+    }
+
+    if (username.length < 3) {
+      const msg = 'Nazwa użytkownika musi mieć co najmniej 3 znaki!';
+      typeof window !== 'undefined' ? alert(msg) : Alert.alert('Błąd', msg);
+      return;
+    }
+
+    if (password.length < 6) {
+      const msg = 'Hasło musi mieć co najmniej 6 znaków!';
       typeof window !== 'undefined' ? alert(msg) : Alert.alert('Błąd', msg);
       return;
     }

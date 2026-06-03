@@ -56,7 +56,7 @@ api.interceptors.request.use(
       console.warn('Nie udało się pobrać tokenu autoryzacji:', e);
     }
     
-    if (token) {
+    if (token && token !== 'null' && token !== 'undefined') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
@@ -66,5 +66,41 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Interceptor odpowiedzi - obsługa wygaśnięcia sesji (401)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('Sesja wygasła (401). Wylogowywanie...');
+      
+      try {
+        if (Platform.OS === 'web') {
+          localStorage.removeItem('userToken');
+        } else {
+          await SecureStore.deleteItemAsync('userToken');
+        }
+      } catch (e) {
+        console.error('Błąd podczas usuwania tokenu:', e);
+      }
+
+      // Możemy tu rzucić błąd dalej lub obsłużyć przekierowanie 
+      // (choć lepiej to robić w komponentach przez router)
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const logoutUser = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem('userToken');
+    } else {
+      await SecureStore.deleteItemAsync('userToken');
+    }
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
+};
 
 export default api;

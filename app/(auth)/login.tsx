@@ -39,12 +39,17 @@ export default function LoginScreen() {
       addLog(`Nawiązywanie połączenia z: ${api.defaults.baseURL}/auth/login`);
       const response = await api.post('/auth/login', { email, password });
       
-      const { access_token } = response.data;
+      const { access_token, hasCharacter } = response.data;
       if (access_token) {
         if (Platform.OS === 'web') localStorage.setItem('userToken', access_token);
         else await SecureStore.setItemAsync('userToken', access_token);
       }
-      router.replace('/(tabs)/dashboard');
+      
+      if (hasCharacter) {
+        router.replace('/(tabs)/dashboard');
+      } else {
+        router.replace('/(tabs)/CreateCharacter');
+      }
     } catch (error: any) {
       addLog('❌ BŁĄD LOGOWANIA');
       let details = error.message;
