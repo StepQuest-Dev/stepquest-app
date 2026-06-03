@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import api, { logoutUser } from '../services/api';
 
 export default function IndexScreen() {
-  const router = useRouter();
+  const [targetRoute, setTargetRoute] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuthAndCharacter = async () => {
@@ -13,9 +13,7 @@ export default function IndexScreen() {
       let token = null;
       try {
         if (Platform.OS === 'web') {
-          if (typeof window !== 'undefined') {
-            token = localStorage.getItem('userToken');
-          }
+          if (typeof window !== 'undefined') token = localStorage.getItem('userToken');
         } else {
           token = await SecureStore.getItemAsync('userToken');
         }
@@ -64,8 +62,7 @@ export default function IndexScreen() {
       }
     };
 
-    const timeout = setTimeout(checkAuthAndCharacter, 100);
-    return () => clearTimeout(timeout);
+    checkAuth();
   }, []);
 
   return (
