@@ -8,8 +8,8 @@
     "scheme": "stepquestapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-    "resizeMode": "contain",
-    "backgroundColor": "#12181f"
+      "resizeMode": "contain",
+      "backgroundColor": "#12181f"
     },
     "ios": {
       "supportsTablet": true
@@ -46,7 +46,8 @@
           "motionPermission": "Zezwól aplikacji na dostęp do czujników ruchu, aby zliczać Twoje kroki."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
